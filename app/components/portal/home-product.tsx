@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowDown, ArrowRight, ArrowUpRight, Gift, ScanLine, SlidersHorizontal, Stamp, SwatchBook, UsersRound } from 'lucide-react'
+import { ArrowDown, ArrowRight, ArrowUpRight, Gift, MessageCircle, ScanLine, SlidersHorizontal, Stamp, SwatchBook, UsersRound } from 'lucide-react'
 import { walletStyles, walletThemes } from '../../../lib/business-appearance'
 import Brand from '../brand'
 import CardPreview from './card-preview'
@@ -15,6 +15,7 @@ const questions = [
   {question:'NFC kartı olmadan başlayabilir miyim?', answer:'Evet. İşletme panelindeki otomatik kasa QR’ı tek başına çalışır. NFC kartı, uyumlu bir kart işletmeye tanımlandığında ikinci bir okutma seçeneği sunar.'},
   {question:'Ödülü kullanmak için ayrı QR gerekir mi?', answer:'Müşterinin hazır ödülü varsa aynı kasa QR’ı veya NFC okutması cüzdanda ödül kullanma seçeneğini açar. Müşteri onayladığında ödül kullanılmış olarak kaydedilir.'},
   {question:'Bir damga bağlantısı tekrar kullanılabilir mi?', answer:'Başarılı işlemden sonra bağlantı kapanır. Otomatik kasa QR’ı bir sonraki işlem için panelde yenilenir.'},
+  {question:'WhatsApp mesajı nasıl gönderilir?', answer:'İşletme panelinde müşteriyi seçip mesajı hazırlarsınız. Damgabir ilgili WhatsApp sohbetini hazır metinle açar, gönderime siz karar verirsiniz.'},
 ] as const
 
 export default function HomeProduct() {
@@ -25,7 +26,7 @@ export default function HomeProduct() {
       <nav aria-label="Ürün sayfası">
         <a href="#nasil-calisir">Nasıl çalışır?</a>
         <a href="#isletmeler-icin">İşletmeler için</a>
-        <a href="#sorular">Sık sorulanlar</a>
+        <a href="#whatsapp">WhatsApp</a>
       </nav>
       <Link className="product-link product-header-login" href="/musteri">Müşteri girişi <ArrowUpRight size={15} aria-hidden="true"/></Link>
     </header>
@@ -34,8 +35,8 @@ export default function HomeProduct() {
       <section className="home-hero product-hero wrap" aria-labelledby="home-title" data-enter>
         <div className="home-copy">
           <p className="home-category">İşletmeler için dijital sadakat</p>
-          <h1 id="home-title">Sadakat kartınız artık telefonda.</h1>
-          <p className="home-description">Müşterileriniz kasadaki QR’ı okutup damga biriktirsin. Siz kampanyayı, kartın görünümünü ve ödülleri tek panelden yönetin.</p>
+          <h1 id="home-title">Bir sonraki geliş için bir neden verin.</h1>
+          <p className="home-description">Her ziyarette bir damga, hedef dolduğunda bir ödül. Müşteriniz ilerlemesini telefonunda görsün, siz WhatsApp’tan bir sonraki ziyareti hatırlatın.</p>
           <div className="product-actions">
             <Link className="brand-button" href="/isletmeler">İşletme paneline gir <ArrowRight size={19} aria-hidden="true"/></Link>
             <a className="product-link" href="#nasil-calisir">Nasıl çalışır? <ArrowDown size={16} aria-hidden="true"/></a>
@@ -65,11 +66,11 @@ export default function HomeProduct() {
         <div className="product-merchant">
           <div className="product-section-heading">
             <p className="product-kicker">İşletme paneli</p>
-            <h2 id="merchant-title">Kampanya da kart da sizin.</h2>
+            <h2 id="merchant-title">Müşterinize geri gelmeye değer bir ödül verin.</h2>
             <ul className="product-features">
-              <li><SlidersHorizontal size={20} aria-hidden="true"/><div><h3>Kampanya kuralları</h3><p>Damga hedefini, günlük sınırı ve müşterinin kazanacağı ödülü belirleyin.</p></div></li>
-              <li><SwatchBook size={20} aria-hidden="true"/><div><h3>Markanıza uygun kart</h3><p>Adınızı ve logonuzu ekleyin. {walletThemes.length} renk paletiyle {walletStyles.length} görünümü canlı önizlemede birleştirin.</p></div></li>
-              <li><UsersRound size={20} aria-hidden="true"/><div><h3>Müşteriler ve son işlemler</h3><p>Damga hareketlerini ve kullanılan ödülleri panelden takip edin.</p></div></li>
+              <li><SlidersHorizontal size={20} aria-hidden="true"/><div><h3>Ulaşılabilir bir hedef belirleyin</h3><p>Damga hedefini, günlük sınırı ve ödülü seçin. Müşteriniz bir sonraki ziyaretinin onu ödüle ne kadar yaklaştıracağını görür.</p></div></li>
+              <li><SwatchBook size={20} aria-hidden="true"/><div><h3>Markanızı müşterinin telefonuna taşıyın</h3><p>Adınızı ve logonuzu ekleyin. {walletThemes.length} renk paletiyle {walletStyles.length} görünümü birleştirerek işletmenize ait bir kart hazırlayın.</p></div></li>
+              <li><UsersRound size={20} aria-hidden="true"/><div><h3>Kampanyanın nasıl kullanıldığını görün</h3><p>Verilen damgaları, açık ödülleri ve kullanılan ödülleri panelde takip edin.</p></div></li>
             </ul>
           </div>
           <div className="product-console" data-visual role="group" aria-label="Örnek işletme paneli">
@@ -87,10 +88,31 @@ export default function HomeProduct() {
         </div>
       </section>
 
+      <section className="product-section wrap" id="whatsapp" aria-labelledby="whatsapp-title">
+        <div className="product-merchant">
+          <div className="product-section-heading">
+            <p className="product-kicker">WhatsApp ile müşteri iletişimi</p>
+            <h2 id="whatsapp-title">Geri gelmeleri için onları davet edin.</h2>
+            <ul className="product-features">
+              <li><Stamp size={20} aria-hidden="true"/><div><h3>Ödüle yaklaşanları teşvik edin</h3><p>Ödülüne bir damga kalan müşterileri seçip bir sonraki ziyaretlerinde hedefi tamamlayabileceklerini hatırlatın.</p></div></li>
+              <li><MessageCircle size={20} aria-hidden="true"/><div><h3>Bir süredir gelmeyenlere ulaşın</h3><p>30 gündür gelmeyen müşterilere yeni kampanyanızı duyurun veya onları yeniden davet edin.</p></div></li>
+            </ul>
+          </div>
+          <div className="product-console product-messages" data-visual role="group" aria-label="Örnek WhatsApp mesajı">
+            <div className="product-console-header"><span><MessageCircle size={19} aria-hidden="true"/> WhatsApp</span><span>Örnek mesaj</span></div>
+            <div className="product-console-body">
+              <p className="product-message-segment">Ödüle 1 damga kalanlar</p>
+              <p className="product-message-bubble">Merhaba! Kahve ödülüne bir damga kaldı. Bir sonraki gelişinde kartını tamamlayabilirsin. Seni bekliyoruz!</p>
+              <p className="product-message-note">Müşteri grubunu seçin ve mesajınızı hazırlayın. Damgabir hazır metni ilgili WhatsApp sohbetinde açar, mesajı siz gönderirsiniz.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="product-section wrap" id="sorular" aria-labelledby="faq-title">
         <div className="product-faq">
           <div className="product-section-heading">
-            <h2 id="faq-title">Sık sorulanlar</h2>
+            <h2 id="faq-title">Sadakat programınızı kasada başlatın.</h2>
             <Link className="brand-button" href="/isletmeler">İşletme paneline gir <ArrowRight size={19} aria-hidden="true"/></Link>
           </div>
           <div className="product-questions">
