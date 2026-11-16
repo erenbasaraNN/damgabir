@@ -1,10 +1,12 @@
 'use client'
 import Brand from '../brand'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDownToLine, ArrowLeft, ArrowRight, ClipboardCopy, Eye, Grid2X2, LockKeyhole, MessageCircle, Plus, ScanLine, Stamp, Ticket, Users } from 'lucide-react'
+import { ArrowDownToLine, ArrowLeft, ArrowRight, ClipboardCopy, Eye, Grid2X2, LockKeyhole, MessageCircle, Plus, ScanLine, Settings, Stamp, Ticket, Users } from 'lucide-react'
 import { loyalty, LoyaltyError, type Campaign } from '../../client'
 import { recipientCsv, whatsappLink as whatsapp } from '../../../lib/messaging'
 import Wallet from '../wallet/wallet'
+import BusinessSettings from './business-settings'
+import type { BusinessAppearance } from '../../../lib/business-appearance'
 
 type Customer = {phone:string;stamps:number;last_visit:string|null}
 type Revision = Campaign & {id:number;name:string;changed:string;kind:string}
@@ -13,11 +15,13 @@ type ActivityFeed = {activity:Activity[];totals:{stamps:number;tickets:number}}
 type Overview = {campaign:Campaign;day:string;issued?:number;history:Revision[];customers:Customer[];activity:Activity[];totals:ActivityFeed['totals'] & {customers:number}}
 type CounterQr = {url:string;qr:string}
 type Issued = {url:string;qr:string;expires:number;code:string}
-const sections = [{id:'home',label:'Genel bakış',icon:Grid2X2},{id:'codes',label:'Kasa işlemleri',icon:ScanLine},{id:'campaign',label:'Kampanyalar',icon:Stamp},{id:'customers',label:'Müşteriler',icon:Users},{id:'messages',label:'WhatsApp',icon:MessageCircle},{id:'preview',label:'Cüzdan önizlemesi',icon:Eye}] as const
+const sections = [{id:'home',label:'Genel bakış',icon:Grid2X2},{id:'codes',label:'Kasa işlemleri',icon:ScanLine},{id:'campaign',label:'Kampanyalar',icon:Stamp},{id:'customers',label:'Müşteriler',icon:Users},{id:'messages',label:'WhatsApp',icon:MessageCircle},{id:'preview',label:'Cüzdan önizlemesi',icon:Eye},{id:'settings',label:'İşletme ayarları',icon:Settings}] as const
 type View = typeof sections[number]['id']
-const descriptions:Record<View,string> = {home:'Sadakat programının güncel durumu ve son kasa hareketleri.',codes:'Kasadaki NFC kartı ve QR koduyla müşterilerinize damga verin.',campaign:'Aktif kuralları güncelleyin veya yeni bir kampanya yayınlayın.',customers:'Damga ilerlemesine ve son ziyaret tarihine göre müşterileri inceleyin.',messages:'Alıcıları seçin, mesajı hazırlayın ve gönderim listesini dışa aktarın.',preview:'Damga birikimini ve ödül kullanımını müşteri cüzdanında deneyin.'}
+const descriptions:Record<View,string> = {home:'Sadakat programının güncel durumu ve son kasa hareketleri.',codes:'Kasadaki NFC kartı ve QR koduyla müşterilerinize damga verin.',campaign:'Aktif kuralları güncelleyin veya yeni bir kampanya yayınlayın.',customers:'Damga ilerlemesine ve son ziyaret tarihine göre müşterileri inceleyin.',messages:'Alıcıları seçin, mesajı hazırlayın ve gönderim listesini dışa aktarın.',preview:'Damga birikimini ve ödül kullanımını müşteri cüzdanında deneyin.',settings:'Müşterilerin cüzdanında görünen adı, logoyu ve temayı düzenleyin.'}
 
-export default function Merchant({walletUrl,business,businessName = "Kavak Kahve"}: {walletUrl:string;business?:string;businessName?:string}) {
+export default function Merchant({walletUrl,business,initialAppearance}: {walletUrl:string;business?:string;initialAppearance?:BusinessAppearance}) {
+  const [appearance,setAppearance] = useState(initialAppearance)
+  const businessName = appearance?.name ?? 'Kavak Kahve'
   const [key,setKey] = useState('')
   const [remember,setRemember] = useState(true)
   const [checkingSession,setCheckingSession] = useState(true)
@@ -214,18 +218,19 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
     {error && <p className="error" role="alert">{error}</p>}
   </form></main>
 
-  if (view === 'preview') return <div className="preview-shell"><div className="preview-bar"><button className="secondary" onClick={() => switchTo('home')}><ArrowLeft size={17}/> İşletme paneli</button><p>Yönetici önizlemesi · Günlük limit uygulanmaz</p></div><Wallet name={businessName} business={business} preview onSessionExpired={sessionExpired}/></div>
+  if (view === 'preview') return <div className="preview-shell"><div className="preview-bar"><button className="secondary" onClick={() => switchTo('home')}><ArrowLeft size={17}/> İşletme paneli</button><p>Yönetici önizlemesi · Günlük limit uygulanmaz</p></div><Wallet name={businessName} theme={appearance?.theme} logoUrl={appearance?.logoUrl} business={business} preview onSessionExpired={sessionExpired}/></div>
 
   return <div className="admin">
     <aside className="sidebar">
       <div className="brand"><Brand/></div>
-      <div className="workspace"><span><Stamp size={16}/></span><div><strong>{businessName}</strong><small>İşletme çalışma alanı</small></div></div>
-      <nav aria-label="İşletme paneli">{sections.map(({id,label,icon:Icon}) => <button type="button" key={id} aria-current={view === id ? 'page' : undefined} onClick={() => switchTo(id)}><Icon size={18}/>{label}</button>)}</nav>
+      <div className="workspace"><span>{appearance?.logoUrl ? <img className="business-logo" src={appearance.logoUrl} alt=""/> : <Stamp size={16}/>}</span><div><strong>{businessName}</strong><small>İşletme çalışma alanı</small></div></div>
+      <nav aria-label="İşletme paneli">{sections.filter(({id}) => id !== 'settings' || (business && appearance)).map(({id,label,icon:Icon}) => <button type="button" key={id} aria-current={view === id ? 'page' : undefined} onClick={() => switchTo(id)}><Icon size={18}/>{label}</button>)}</nav>
       <a className="subtle-link admin-wallet" href={walletUrl} target="_blank" rel="noreferrer">Müşteri cüzdanını aç <ArrowRight size={15}/></a>
       <button className="sidebar-exit" disabled={pending} onClick={() => void logout()}>Oturumu kapat</button>
     </aside>
     <main className="admin-main" id="top">
       <header className="admin-header" data-enter><div><span className="eyebrow">{businessName.toLocaleUpperCase("tr-TR")} / İŞLETME</span><h1>{sections.find(item => item.id === view)?.label}</h1><p>{descriptions[view]}</p></div>{view === 'home' && <button className="primary" onClick={() => switchTo('codes')}><ScanLine size={17}/> Kasa işlemi</button>}</header>
+      {view === 'settings' && business && appearance && <BusinessSettings business={business} appearance={appearance} campaign={data.campaign} onSave={setAppearance} onSessionExpired={sessionExpired}/>}
       {view === 'home' && <>
         <div className="metrics">{([{label:'Toplam müşteri',icon:Users,value:data.totals.customers},{label:'Verilen damga',icon:Stamp,value:data.totals.stamps},{label:'Açık ödül bileti',icon:Ticket,value:data.totals.tickets}]).map(({label,icon:Icon,value}) => <article className="panel metric" key={label}><span><Icon size={19}/>{label}</span><strong>{value}</strong></article>)}</div>
         <section className="panel activity"><div className="form-heading"><h2>Son işlemler</h2><button className="secondary" disabled={pending} onClick={() => run('overview')}>Yenile</button></div>{data.activity.length ? <div className="table-wrap"><table><thead><tr><th>İşlem</th><th>Tarih</th><th>Şube</th><th>Mühür / Kart</th></tr></thead><tbody>{data.activity.map(item => <tr key={item.id}><td>{item.kind === 'stamp' ? 'Damga verildi' : item.phone ? `+90 ${item.phone} ödül kullandı` : 'Ödül kullanıldı'}</td><td>{item.day}</td><td>{item.branch}</td><td>{item.seal}</td></tr>)}</tbody></table></div> : <p>İlk kasa işlemi burada görünecek.</p>}</section>

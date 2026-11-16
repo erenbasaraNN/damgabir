@@ -1,17 +1,20 @@
 'use client'
 import Brand from '../brand'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Coffee, ScanLine, Stamp, Ticket, WalletCards } from 'lucide-react'
+import { ArrowRight, ScanLine, Stamp, Ticket, WalletCards } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { businessWalletPath } from '../../../lib/tenant'
-import PhysicalStamp from './physical-stamp'
+import { WalletCard, WalletIdentity } from './wallet-card'
+import { defaultWalletTheme, type WalletTheme } from '../../../lib/business-appearance'
 import PhoneInput from '../portal/phone-input'
 import { loyalty, LoyaltyError, type Campaign } from '../../client'
 
 type State = {campaign:Campaign;customer:{id:string;stamps:number}|null;tickets:{id:string;reward:string;redeemed:string|null}[];action?:string}
 const initial: State = {campaign:{goal:8,daily:1,reward:'Bir kahve bizden',locked:0},customer:null,tickets:[]}
 
-export default function Wallet({name,code,preview,business,program,onSessionExpired}: {name:string;code?:string;preview?:boolean;business?:string;program?:'kavak';onSessionExpired?:()=>void}) {
+export default function Wallet({name,code,preview,business,program,theme = defaultWalletTheme,logoUrl,onSessionExpired}: {
+  name:string;code?:string;preview?:boolean;business?:string;program?:'kavak';theme?:WalletTheme;logoUrl?:string|null;onSessionExpired?:()=>void
+}) {
   const [state,setState] = useState<State>(initial)
   const [phone,setPhone] = useState('')
   const [error,setError] = useState('')
@@ -86,16 +89,15 @@ export default function Wallet({name,code,preview,business,program,onSessionExpi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
 
-  const MarkIcon = business ? Stamp : Coffee
   const stamps = state.customer?.stamps ?? 0
   const canStamp = Boolean(preview || (code && !used))
   const available = state.tickets.filter(ticket => !ticket.redeemed).length
   const nextReward = state.tickets.findLast(ticket => !ticket.redeemed)
 
-  return <div data-stamp-motion="enabled" className={'wallet-shell'+(!state.customer ? ' onboarding' : '')}>
+  return <div data-stamp-motion="enabled" data-wallet-theme={theme} className={'wallet-shell'+(!state.customer ? ' onboarding' : '')}>
     <AnimatePresence>
       {(!introDone || !ready) && <motion.div className="arrival" key="arrival" exit={{opacity:0,filter:'blur(8px)'}} transition={{duration:.45}} role="status" aria-label="Cüzdan açılıyor">
-        <div className="arrival-emblem"><Stamp size={42} strokeWidth={1.3}/><span/></div>
+        <div className="arrival-emblem">{logoUrl ? <img className="business-logo" src={logoUrl} alt=""/> : <><Stamp size={42} strokeWidth={1.3}/><span/></>}</div>
         <h2>damgabir<span>.</span></h2><p>Güzel alışkanlıkların bir karşılığı var.</p><div className="arrival-line"/>
       </motion.div>}
     </AnimatePresence>
@@ -120,28 +122,13 @@ export default function Wallet({name,code,preview,business,program,onSessionExpi
     </dialog>}
     <header className="wallet-header"><a className="brand" href={business ? businessWalletPath(business) : "/"}><Brand/></a><span className="wallet-header-label">Sadakat cüzdanı</span></header>
     <main id="top" className="wallet-main">
-      <div className="wallet-intro" data-enter>
-        <div className="coffee-seal" aria-hidden="true"><MarkIcon size={22} strokeWidth={1.6}/></div>
-        <h1>{name}</h1>
-        <p>{state.campaign.name ?? (business ? 'Sadakat programı' : 'Kahve Kulübü')}</p>
-      </div>
+      <WalletIdentity name={name} campaign={state.campaign.name ?? (business ? 'Sadakat programı' : 'Kahve Kulübü')} logoUrl={logoUrl} business={Boolean(business)}/>
       <nav hidden={!state.customer} className="wallet-tabs" aria-label="Cüzdan">
         <button type="button" disabled={pending} aria-pressed={tab === 'card'} onClick={() => setTab('card')}><WalletCards size={17}/> Sadakat kartı</button>
         <button type="button" disabled={pending} aria-pressed={tab === 'tickets'} onClick={() => setTab('tickets')}><Ticket size={17}/> Ödül biletleri {available > 0 && <span className="badge">{available}</span>}</button>
       </nav>
       {tab === 'card' ? <>
-        <article hidden={!state.customer} data-stamping={impact !== null} className={'paper'+(impact !== null ? ' paper-impact' : '')} aria-label="Sadakat kartı">
-          <div className="wallet-card-finish" aria-hidden="true"/><div className="paper-top"><div><span className="eyebrow">SADAKAT KARTI</span><h2>{state.campaign.reward}</h2></div><span className="stamp-counter">{stamps}<small> / {state.campaign.goal}</small></span></div>
-          <div className="stamp-grid" aria-label={stamps + ' damga'}>
-            {Array.from({length:state.campaign.goal},(_,index) => <div className="stamp-cell" data-next={canStamp && !nextReward && index === stamps && impact === null} key={index}>
-              <div className={'stamp-slot'+(index < stamps ? ' inked' : '')+(impact === index ? ' landing' : '')}>
-                {index < stamps || impact === index ? <><MarkIcon size={22} strokeWidth={1.65}/><span className="ink-lettering">DAMGA</span></> : index === state.campaign.goal - 1 ? <Ticket size={20}/> : <span>{String(index+1).padStart(2,'0')}</span>}
-              </div>
-              {impact === index && <PhysicalStamp />}
-            </div>)}
-          </div>
-          <div className="paper-foot"><span>{state.campaign.goal - stamps} damga sonra ödül senin.</span><div className="progress" aria-hidden="true"><i style={{width: stamps / state.campaign.goal * 100 + '%'}}/></div></div>
-        </article>
+        <WalletCard goal={state.campaign.goal} reward={state.campaign.reward} stamps={stamps} canStamp={canStamp && !nextReward} impact={impact} hidden={!state.customer} business={Boolean(business)}/>
         {state.customer ? <div className="wallet-action">
           {!canStamp && <p><ScanLine size={17}/> {nextReward ? 'Ödülünü kullanmak için kasadaki NFC kartını veya QR’ı okut.' : 'Kasadaki NFC kartını veya QR kodu okutarak damga ekle.'}</p>}
           {canStamp && <>
