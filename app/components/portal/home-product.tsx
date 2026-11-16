@@ -68,7 +68,7 @@ export default function HomeProduct() {
             <p className="product-kicker">İşletme paneli</p>
             <h2 id="merchant-title">Müşterinize geri gelmeye değer bir ödül verin.</h2>
             <ul className="product-features">
-              <li><SlidersHorizontal size={20} aria-hidden="true"/><div><h3>Ulaşılabilir bir hedef belirleyin</h3><p>Damga hedefini, günlük sınırı ve ödülü seçin. Müşteriniz bir sonraki ziyaretinin onu ödüle ne kadar yaklaştıracağını görür.</p></div></li>
+              <li><SlidersHorizontal size={20} aria-hidden="true"/><div><h3>Ulaşılabilir bir hedef belirleyin</h3><p>Damga hedefini ve ödülü seçin. Müşteriniz bir sonraki ziyaretinin onu ödüle ne kadar yaklaştıracağını görür.</p></div></li>
               <li><SwatchBook size={20} aria-hidden="true"/><div><h3>Markanızı müşterinin telefonuna taşıyın</h3><p>Adınızı ve logonuzu ekleyin. {walletThemes.length} renk paletiyle {walletStyles.length} görünümü birleştirerek işletmenize ait bir kart hazırlayın.</p></div></li>
               <li><UsersRound size={20} aria-hidden="true"/><div><h3>Kampanyanın nasıl kullanıldığını görün</h3><p>Verilen damgaları, açık ödülleri ve kullanılan ödülleri panelde takip edin.</p></div></li>
             </ul>
@@ -79,7 +79,7 @@ export default function HomeProduct() {
               <div className="product-console-title"><h3>Kampanya ayarları</h3><SlidersHorizontal size={19} aria-hidden="true"/></div>
               <dl>
                 <div><dt>Damga hedefi</dt><dd>8 damga</dd></div>
-                <div><dt>Günlük sınır</dt><dd>1 damga</dd></div>
+                <div><dt>Kasa QR’ı</dt><dd>Tek kullanımlık</dd></div>
                 <div><dt>Ödül</dt><dd>Ücretsiz kahve</dd></div>
               </dl>
               <div className="product-console-reward"><Gift size={20} aria-hidden="true"/><div><strong>Ödül kartta belirir</strong><span>Hedef tamamlandığında cüzdana eklenir.</span></div></div>

@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       }
       if (body.operation === 'stamp') {
         const {code} = await issueCode(db,'Sunum','Kasa')
-        return reply(await useCode(db,code,id,true))
+        return reply(await useCode(db,code,id))
       }
       return reply(await wallet(db,id))
     }
@@ -127,14 +127,13 @@ export async function POST(request: NextRequest) {
     let issued: number | undefined
     if (body.action === 'campaign') {
       const goal = Number(body.goal)
-      const daily = Number(body.daily)
       const reward = str(body.reward,80)
       const name = str(body.name,60)
       const create = body.mode === 'new'
-      if (!Number.isInteger(goal) || goal < 2 || goal > 20 || !Number.isInteger(daily) || daily < 1 || daily > 20 || !reward || (create && !name)) {
-        return reply({error:'Kampanya adını ve ödülü girin. Hedef 2–20, günlük limit 1–20 arasında olmalı.'},400)
+      if (!Number.isInteger(goal) || goal < 2 || goal > 20 || !reward || (create && !name)) {
+        return reply({error:'Kampanya adını ve ödülü girin. Hedef 2–20 arasında olmalı.'},400)
       }
-      issued = await publishCampaign(live,{goal,daily,reward,name},create)
+      issued = await publishCampaign(live,{goal,reward,name},create)
     }
 
     const base = host === 'demo' ? (process.env.DAMGABIR_PUBLIC_ORIGIN ?? origin) : `https://${tenant}.damgabir.com`
@@ -185,7 +184,7 @@ export async function POST(request: NextRequest) {
     }
     return response
   } catch (error) {
-    const message = error instanceof Error && /^(Kod|Bu bilet|Bugünkü)/.test(error.message) ? error.message : 'İşlem tamamlanamadı.'
+    const message = error instanceof Error && /^(Kod|Bu bilet)/.test(error.message) ? error.message : 'İşlem tamamlanamadı.'
     return reply({error:message},400)
   }
 }

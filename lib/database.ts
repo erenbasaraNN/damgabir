@@ -236,7 +236,7 @@ export async function counterQrCode(db: LoyaltyDatabase) {
   })
 }
 
-export async function useCode(db: LoyaltyDatabase, code: string, customer: string, unlimited = false) {
+export async function useCode(db: LoyaltyDatabase, code: string, customer: string) {
   return db.transaction(async db => {
     const row = await findActiveCode(db,code)
     if (!row) throw new Error('Kod kullanıldı veya süresi doldu.')
@@ -251,8 +251,6 @@ export async function useCode(db: LoyaltyDatabase, code: string, customer: strin
       await db.prepare('UPDATE @customer SET last_visit=? WHERE id=?').run(day,customer)
     } else {
       const rules = await campaign(db)
-      const visits = await db.prepare("SELECT count(*) AS total FROM @activity WHERE customer=? AND day=? AND kind='stamp'").get(customer, day)
-      if (!unlimited && Number(visits?.total) >= rules.daily) throw new Error('Bugünkü damga limitine ulaştın.')
       const count = Number((await db.prepare('SELECT stamps FROM @customer WHERE id=?').get(customer))?.stamps) + 1
       const earned = count >= rules.goal
       await db.prepare('UPDATE @customer SET stamps=?,last_visit=? WHERE id=?').run(earned ? 0 : count, day, customer)
@@ -265,7 +263,7 @@ export async function useCode(db: LoyaltyDatabase, code: string, customer: strin
   })
 }
 
-export async function publishCampaign(db: LoyaltyDatabase, rules: {name:string;goal:number;daily:number;reward:string}, create: boolean) {
+export async function publishCampaign(db: LoyaltyDatabase, rules: {name:string;goal:number;reward:string}, create: boolean) {
   return db.transaction(async db => {
     const before = await campaign(db)
     const previousName = String((await db.prepare('SELECT name FROM @campaign_revision ORDER BY id DESC LIMIT 1').get())?.name ?? 'Kahve Kulübü')
@@ -280,12 +278,12 @@ export async function publishCampaign(db: LoyaltyDatabase, rules: {name:string;g
       }
     }
     await db.prepare('UPDATE @customer SET stamps=stamps % ? WHERE stamps>=?').run(rules.goal,rules.goal)
-    await db.prepare('UPDATE @campaign SET goal=?,daily=?,reward=?,locked=0 WHERE id=1').run(rules.goal,rules.daily,rules.reward)
+    await db.prepare('UPDATE @campaign SET goal=?,reward=?,locked=0 WHERE id=1').run(rules.goal,rules.reward)
     const revision = db.prepare('INSERT INTO @campaign_revision (name,goal,daily,reward,changed,kind) VALUES (?,?,?,?,?,?)')
     if (!(await db.prepare('SELECT id FROM @campaign_revision LIMIT 1').get())) {
       await revision.run(previousName,before.goal,before.daily,before.reward,new Date().toISOString(),'initial')
     }
-    await revision.run(create ? rules.name : previousName,rules.goal,rules.daily,rules.reward,new Date().toISOString(),create ? 'new' : 'update')
+    await revision.run(create ? rules.name : previousName,rules.goal,before.daily,rules.reward,new Date().toISOString(),create ? 'new' : 'update')
     return issued
   })
 }

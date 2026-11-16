@@ -12,7 +12,7 @@ test('the fifth claim earns a reward and the sixth redeems it once through the s
   delete process.env.VERCEL
   const db = await database('demo')
   try {
-    await db.prepare('UPDATE @campaign SET goal=5,daily=5 WHERE id=1').run()
+    await db.prepare('UPDATE @campaign SET goal=5,daily=1 WHERE id=1').run()
     await db.prepare("INSERT INTO @customer (id,phone) VALUES ('customer','5550000001')").run()
     for (let number = 1; number <= 5; number++) {
       const result = await useCode(db, await counterQrCode(db), 'customer')
@@ -33,11 +33,10 @@ test('the fifth claim earns a reward and the sixth redeems it once through the s
     assert.equal((await db.prepare("SELECT count(*) AS count FROM @activity WHERE kind='redeem'").get()).count, 1)
 
     const next = await issueCode(db, 'Merkez', 'Kasa')
-    await assert.rejects(useCode(db, next.code, 'customer'), /Bugünkü damga limiti/)
-    await db.prepare('UPDATE @campaign SET daily=6 WHERE id=1').run()
     const restarted = await useCode(db, next.code, 'customer')
     assert.equal(restarted.action, 'stamp')
     assert.equal(restarted.customer.stamps, 1)
+    await assert.rejects(useCode(db, next.code, 'customer'), /Kod kullanıldı/)
   } finally {
     db.close()
     for (const suffix of ['', '-wal', '-shm']) rmSync(join(dir, 'demo.sqlite' + suffix), {force: true})

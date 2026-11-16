@@ -218,7 +218,7 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
     {error && <p className="error" role="alert">{error}</p>}
   </form></main>
 
-  if (view === 'preview') return <div className="preview-shell"><div className="preview-bar"><button className="secondary" onClick={() => switchTo('home')}><ArrowLeft size={17}/> İşletme paneli</button><p>Yönetici önizlemesi · Günlük limit uygulanmaz</p></div><Wallet name={businessName} theme={appearance?.theme} style={appearance?.style} logoUrl={appearance?.logoUrl} business={business} preview onSessionExpired={sessionExpired}/></div>
+  if (view === 'preview') return <div className="preview-shell"><div className="preview-bar"><button className="secondary" onClick={() => switchTo('home')}><ArrowLeft size={17}/> İşletme paneli</button><p>Yönetici önizlemesi</p></div><Wallet name={businessName} theme={appearance?.theme} style={appearance?.style} logoUrl={appearance?.logoUrl} business={business} preview onSessionExpired={sessionExpired}/></div>
 
   return <div className="admin">
     <aside className="sidebar">
@@ -239,11 +239,11 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
         <section className="panel activity"><div className="form-heading"><h2>Son işlemler</h2><button className="secondary" disabled={pending} onClick={() => run('overview')}>Yenile</button></div>{data.activity.length ? <div className="table-wrap"><table><thead><tr><th>İşlem</th><th>Tarih</th><th>Şube</th><th>Mühür / Kart</th></tr></thead><tbody>{data.activity.map(item => <tr key={item.id}><td>{item.kind === 'stamp' ? 'Damga verildi' : item.phone ? `+90 ${item.phone} ödül kullandı` : 'Ödül kullanıldı'}</td><td>{item.day}</td><td>{item.branch}</td><td>{item.seal}</td></tr>)}</tbody></table></div> : <p>İlk kasa işlemi burada görünecek.</p>}</section>
       </>}
       {view === 'campaign' && rules && <div className="admin-grid">
-        <form className="panel admin-form" onSubmit={event => {event.preventDefault();void run('campaign',{...rules,name,mode})}}>
+        <form className="panel admin-form" onSubmit={event => {event.preventDefault();void run('campaign',{goal:rules.goal,reward:rules.reward,name,mode})}}>
           <div className="form-heading"><h2>{mode === 'new' ? 'Yeni kampanya' : 'Aktif kampanya'}</h2>{mode === 'update' && <span className="status">Yayında</span>}</div>
           {mode === 'new' ? <label>Kampanya adı<input value={name} maxLength={60} required onChange={event => setName(event.target.value)}/></label> : <strong>{data.history[0]?.name ?? 'Kahve Kulübü'}</strong>}
           <label>Ödül adı<input value={rules.reward} maxLength={80} required onChange={event => setRules({...rules,reward:event.target.value})}/></label>
-          <div className="form-row"><label>Damga hedefi<input type="number" min={2} max={20} value={rules.goal} required onChange={event => setRules({...rules,goal:Number(event.target.value)})}/></label><label>Günlük müşteri limiti<input type="number" min={1} max={20} value={rules.daily} required onChange={event => setRules({...rules,daily:Number(event.target.value)})}/></label></div>
+          <label>Damga hedefi<input type="number" min={2} max={20} value={rules.goal} required onChange={event => setRules({...rules,goal:Number(event.target.value)})}/></label>
           <p>Yeni hedefe ulaşan kartlara ödül bileti verilir. Artan damgalar sonraki ödüle aktarılır ve kazanılmış biletler korunur.</p>
           <button className="primary" disabled={pending}>{mode === 'new' ? 'Yeni kampanyayı yayınla' : 'Değişiklikleri yayınla'}</button>
         </form>
