@@ -1,0 +1,12 @@
+.next/
+node_modules/
+.data/
+.env*
+*.zip
+
+
+.next*/
+*.tsbuildinfo
+.taste-skill/
+
+.vercel/

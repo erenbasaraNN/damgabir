@@ -1,0 +1,146 @@
+.portal {
+  max-width: 70rem;
+  min-height: 100svh;
+  margin-inline: auto;
+  padding-inline: clamp(1.2rem, 5vw, 4rem);
+}
+
+.portal-header {
+  display: flex;
+  align-items: center;
+  min-height: 5rem;
+  border-bottom: 1px solid #d9d7c9;
+}
+
+.portal-home,.portal-main {
+  padding-block: clamp(2.5rem, 9vh, 6rem);
+}
+
+.portal-main {
+  max-width: 46rem;
+}
+
+.portal-intro {
+  margin-bottom: clamp(1.75rem, 4vw, 3rem);
+}
+
+.portal-intro h1 {
+  max-width: 16ch;
+  color: #1e3a2f;
+  font: 400 clamp(2.8rem, 7vw, 5.4rem)/.98 var(--serif);
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+
+.portal-intro p {
+  color: #526450;
+  margin-top: 1rem;
+}
+
+.portal-roles {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 1rem;
+}
+
+.portal-role,.portal-list a,.portal-empty {
+  background: #fbf9f0;
+  border: 1px solid #d9d7c9;
+  border-radius: 12px;
+  color: #1e3a2f;
+}
+
+.portal-role {
+  position: relative;
+  min-height: 10rem;
+  padding: 1.25rem 2.6rem 1.25rem 1.25rem;
+}
+
+.portal-role:hover,.portal-list a:hover {
+  background: #edf2e9;
+  border-color: #a3b1a0;
+  transform: translateY(-2px);
+}
+
+.portal-role-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 8px;
+  background: #e4ece0;
+  flex: 0 0 auto;
+}
+
+.portal-role h2 {
+  margin: .8rem 0 .25rem;
+  font-weight: 700;
+}
+
+.portal-role p,.portal-list p,.portal-empty p {
+  color: #526450;
+  font-size: .9rem;
+}
+
+.portal-arrow {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+}
+
+.portal-list {
+  display: grid;
+  gap: .65rem;
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+}
+
+.portal-list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .85rem;
+  padding: 1rem 1.2rem;
+}
+
+.portal-card h2,.portal-empty h2 {
+  font-weight: 700;
+}
+
+.portal-card div {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.portal-card small {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  flex: 0 0 auto;
+}
+
+.portal-card-arrow {
+  flex: 0 0 auto;
+}
+
+.portal-empty {
+  margin-bottom: 1.25rem;
+  padding: 1.2rem;
+}
+
+.portal-main .phone-input {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+@media (max-width: 700px) {
+  .portal-roles {
+    grid-template-columns: 1fr;
+  }
+  .portal-role {
+    min-height: auto;
+  }
+}

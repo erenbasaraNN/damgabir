@@ -1,0 +1,679 @@
+.admin {
+  display: grid;
+  min-height: 100dvh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar .brand {
+  margin: 0 8px 32px;
+}
+
+.sidebar nav {
+  display: grid;
+}
+
+.sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font: 600 14px var(--sans);
+  border: 0;
+  background: none;
+  white-space: nowrap;
+}
+
+.admin-wallet {
+  margin: 26px 10px;
+}
+
+.admin-main {
+  padding: 36px clamp(18px,4vw,58px);
+  max-width: 1280px;
+  width: 100%;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.admin-header h1 {
+  font-size: clamp(29px,4vw,48px);
+  line-height: 1.05;
+  letter-spacing: -.055em;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.panel {
+  border: 1px solid #dce4da;
+  background: white;
+}
+
+.panel h2 {
+  font-size: 17px;
+  letter-spacing: -.025em;
+}
+
+.panel p {
+  font-size: 14px;
+  color: #4f6054;
+}
+
+.admin-login,.admin-form {
+  max-width: 560px;
+  display: grid;
+  gap: 13px;
+}
+
+.admin-login input,.admin-form input,.admin-form select {
+  width: 100%;
+}
+
+.admin-login .remember-session {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.remember-session input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  accent-color: #173c32;
+}
+
+.remember-session small {
+  color: #637167;
+}
+
+.admin-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.admin-login .primary,.admin-form .primary {
+  justify-self: start;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+}
+
+.metric {
+  display: grid;
+  color: #3f5949;
+}
+
+.metric strong {
+  line-height: 1;
+  color: #1e3025;
+}
+
+.metric span {
+  font-size: 13px;
+}
+
+.activity h2 {
+  margin-bottom: 9px;
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  border-collapse: collapse;
+  text-align: left;
+  width: 100%;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+th,td {
+  padding: 11px 10px;
+  border-bottom: 1px solid #e4e9e2;
+}
+
+th {
+  background: #f2f5f1;
+  color: #48594d;
+  font-size: 12px;
+}
+
+.form-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #e7f0e5;
+  color: #355140;
+  border-radius: 99px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.status.locked {
+  background: #f3ebdb;
+  color: #6a4c27;
+}
+
+fieldset {
+  display: grid;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.form-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #246244;
+  font-weight: 650;
+}
+
+.whatsapp:hover {
+  text-decoration: underline;
+}
+
+.issued {
+  display: grid;
+  gap: 8px;
+}
+
+@media(max-width:680px) {
+  .admin {
+    display: block;
+  }
+  .sidebar {
+    padding: 12px;
+    gap: 10px;
+    border-bottom: 1px solid #dde4dd;
+  }
+  .sidebar .brand,.admin-wallet {
+    margin: 0;
+  }
+  .sidebar nav {
+    display: flex;
+    overflow: auto;
+  }
+  .sidebar nav button {
+    font-size: 12px;
+    gap: 5px;
+  }
+  .admin-main {
+    padding-top: 24px;
+  }
+  .metric {
+    padding: 10px;
+  }
+  .metric strong {
+    font-size: 28px;
+  }
+}
+
+.admin {
+  grid-template-columns: 244px minmax(0,1fr);
+}
+
+.sidebar {
+  color: #edf4eb;
+  padding: 24px 15px;
+  border-right: 0;
+}
+
+.sidebar .brand,.entry-shell .brand {
+  color: inherit;
+}
+
+.sidebar .brand-mark,.entry-shell .brand-mark {
+  background: #edf1e6;
+  color: #183528;
+}
+
+.sidebar .brand-dot,.entry-shell .brand-dot {
+  color: #dcab64;
+}
+
+.workspace {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #ffffff2c;
+  background: #ffffff0a;
+}
+
+.workspace>span {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: #436354;
+}
+
+.workspace strong,.workspace small {
+  display: block;
+}
+
+.workspace strong {
+  font-size: 13px;
+}
+
+.workspace small {
+  font-size: 11px;
+  color: #b5c8ba;
+}
+
+.sidebar nav button {
+  color: #d0ded3;
+  padding: 0 9px;
+}
+
+.sidebar nav button:hover,.sidebar nav button[aria-current] {
+  background: #e2ebdf;
+  color: #19392b;
+}
+
+.sidebar-exit,.admin-wallet {
+  color: #c5d2c7;
+  text-align: left;
+  font-size: 13px;
+  margin: 15px 8px 0;
+}
+
+.admin-wallet:hover,.sidebar-exit:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.admin-header {
+  border-bottom: 1px solid #ced8ce;
+  animation: rise .33s both;
+}
+
+.admin-header p {
+  font-size: 14px;
+  color: #4c6153;
+  margin-top: 9px;
+}
+
+.metric {
+  padding: 19px;
+  gap: 13px;
+}
+
+.metric span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 650;
+}
+
+.activity p {
+  margin-top: 9px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  align-items: start;
+}
+
+.admin-grid .admin-form {
+  max-width: none;
+}
+
+.revisions {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.revisions li {
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+  padding: 12px 0;
+  border-top: 1px solid #e2e8e0;
+}
+
+.revisions small {
+  color: #55675c;
+}
+
+.admin-form textarea {
+  border: 1px solid #cbd1c9;
+  border-radius: 8px;
+  padding: 10px;
+  width: 100%;
+  resize: vertical;
+}
+
+.qr-panel {
+  text-align: center;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.qr-panel input {
+  width: 100%;
+  font-size: 12px;
+}
+
+.manual-codes {
+  margin-top: 24px;
+}
+
+.manual-codes > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.manual-codes[open] > summary {
+  margin-bottom: 18px;
+}
+
+.qr-code {
+  width: min(100%,248px);
+  border: 1px solid #dbe2d8;
+  border-radius: 8px;
+}
+
+.qr-placeholder {
+  min-height: 170px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: #405847;
+}
+
+.batch {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.batch blockquote {
+  margin: 0;
+  background: #edf4eb;
+  border-left: 3px solid #698b73;
+  padding: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.entry-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: radial-gradient(ellipse at 50% 8%,#416653,#152d24 68%);
+}
+
+.entry-shell .admin-login {
+  width: min(100%,414px);
+  background: #f3f5ef;
+  animation: rise .43s both;
+}
+
+.entry-shell .brand {
+  font-size: 23px;
+}
+
+.entry-shell h1 {
+  font-size: 35px;
+  line-height: 1.1;
+  letter-spacing: -.055em;
+  margin-top: 10px;
+  font-weight: 750;
+}
+
+.preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #152d24;
+  color: #f4f6ef;
+  padding: 7px 14px;
+  font-size: 12px;
+}
+
+.preview-bar .secondary {
+  min-height: 36px;
+  background: #edf4eb;
+}
+
+@media(max-width:900px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media(max-width:680px) {
+  .sidebar {
+    padding: 12px;
+  }
+  .workspace {
+    display: none;
+  }
+  .sidebar-exit {
+    margin: 0;
+  }
+  .admin-header {
+    align-items: flex-start;
+  }
+  .admin-header>.primary {
+    white-space: nowrap;
+  }
+  .admin-main {
+    padding-top: 21px;
+  }
+  .metric {
+    padding: 10px;
+    gap: 8px;
+  }
+  .metric span {
+    align-items: flex-start;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .metric span svg {
+    width: 14px;
+    flex-shrink: 0;
+  }
+  .metric strong {
+    font-size: 29px;
+  }
+}
+
+.admin {
+  background: #f1f3ef;
+}
+
+.sidebar {
+  background: #18392f;
+  padding-top: 30px;
+}
+
+.sidebar nav {
+  gap: 8px;
+}
+
+.sidebar nav button {
+  min-height: 49px;
+  border-radius: 12px;
+  transition: background .2s,transform .2s;
+}
+
+.sidebar nav button:hover {
+  transform: translateX(3px);
+}
+
+.sidebar nav button[aria-current] {
+  background: #d9e9d9;
+  box-shadow: 0 5px 14px #0001;
+}
+
+.workspace {
+  padding: 15px;
+  border-radius: 14px;
+  margin-bottom: 30px;
+}
+
+.admin-main {
+  padding-top: 46px;
+}
+
+.admin-header {
+  padding-bottom: 28px;
+  margin-bottom: 28px;
+}
+
+.panel {
+  border-radius: 18px;
+  border-color: #e0e5db;
+  box-shadow: 0 5px 16px -10px #20372c30;
+  padding: 24px;
+  animation: rise .4s both;
+}
+
+.metrics {
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.metric {
+  border-top: 0;
+  position: relative;
+  overflow: hidden;
+  min-height: 150px;
+  justify-content: space-between;
+}
+
+.metric strong {
+  font-size: 52px;
+  font-weight: 500;
+  letter-spacing: -3px;
+}
+
+.metric:nth-child(2) {
+  animation-delay: .07s;
+  background: #eaf0e5;
+}
+
+.metric:nth-child(3) {
+  animation-delay: .14s;
+  background: #f3ecdc;
+}
+
+.admin-grid {
+  gap: 24px;
+}
+
+.admin th {
+  background: #f6f8f3;
+  font-weight: 600;
+  padding: 15px;
+}
+
+.admin td {
+  padding: 17px 15px;
+}
+
+.admin tbody tr:hover {
+  background: #f6f8f3;
+}
+
+.admin .primary {
+  border-radius: 11px;
+  min-height: 46px;
+}
+
+.admin input,.admin select {
+  min-height: 47px;
+}
+
+.entry-shell .admin-login {
+  padding: 38px;
+  border-radius: 22px;
+  box-shadow: 0 30px 80px #0003;
+}
+
+@media(max-width:680px) {
+  .sidebar {
+    padding: 15px;
+  }
+  .sidebar nav button {
+    min-height: 44px;
+  }
+  .admin-main {
+    padding: 24px 16px;
+  }
+  .metrics {
+    gap: 8px;
+  }
+  .metric {
+    padding: 13px;
+    min-height: 115px;
+  }
+  .metric strong {
+    font-size: 34px;
+  }
+  .panel {
+    padding: 18px;
+  }
+  .admin-header h1 {
+    font-size: 32px;
+  }
+}
+.owner-console {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 54rem;
+  margin-inline: auto;
+  padding: clamp(1rem, 5vw, 3rem);
+}
+
+.owner-console .admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.owner-console .table-wrap th[scope='row'] {
+  font-weight: 600;
+  text-transform: none;
+}
