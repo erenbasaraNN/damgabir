@@ -15,7 +15,7 @@ export default function CardPreview() {
   return <div className="home-preview" data-theme={theme} data-visual>
     <div className="preview-card">
       <div className="preview-card-top"><BrandMark/><span>Örnek sadakat kartı</span></div>
-      <h2>Bir kahve bizden.</h2>
+      <p className="preview-offer">Bir kahve bizden.</p>
       <div className="preview-stamps" aria-hidden="true">
         {Array.from({length:8},(_,index) => <span key={index} className={index < stamps ? `complete${index === stamps - 1 && stamps > 5 ? ' preview-stamped' : ''}` : ''}>
           {index < stamps ? <BrandMark/> : index === 7 ? <Gift size={24} aria-hidden="true"/> : <span>{index + 1}</span>}

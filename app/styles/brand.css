@@ -32,14 +32,14 @@
 .preview-card::before { content: ''; position: absolute; z-index: -1; inset: 0; opacity: .5; background: repeating-radial-gradient(ellipse at 120% -15%,transparent 0 23px,#fff9 24px,transparent 25px 34px); }
 .preview-card-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11px; }
 .preview-card-top svg { width: 36px; height: 36px; }
-.preview-card h2 { font: 600 clamp(32px,3.5vw,48px)/1.02 var(--sans); letter-spacing: -.065em; margin: 36px 0 30px; }
+.preview-offer { font: 600 clamp(32px,3.5vw,48px)/1.02 var(--sans); letter-spacing: -.065em; margin: 36px 0 30px; }
 .preview-stamps { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
 .preview-stamps > span { display: grid; place-items: center; aspect-ratio: 1.13; border: 1px solid #183b2b25; border-radius: 15px; background: #ffffff50; }
 .preview-stamps > .complete { background: var(--preview-stamp); }
 .preview-stamps .complete svg { width: 33px; height: 33px; }
 .preview-card-bottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #183b2b25; font-size: 12px; }
 .preview-card-bottom strong { font-size: 26px; font-weight: 600; letter-spacing: -.05em; }
-.preview-card-bottom strong span { opacity: .6; font-size: 16px; }
+.preview-card-bottom strong span { opacity: .84; font-size: 16px; }
 .preview-controls { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; font-size: 12px; color: var(--brand-muted); }
 .preview-controls > div { display: flex; gap: 8px; }
 .theme-swatch { width: 44px; height: 44px; display: grid; place-items: center; background: transparent; border: 1px solid transparent; border-radius: 50%; position: relative; color: #183b2b; }
@@ -116,7 +116,7 @@
   .home-help { text-align: center; }
   .preview-topline { flex-direction: row; font-size: 10px; }
   .preview-card { padding: 26px; }
-  .preview-card h2 { font-size: 38px; }
+  .preview-offer { font-size: 38px; }
   .portal-roles { grid-template-columns: 1fr; }
   .portal-role,.portal-role + .portal-role { min-height: 110px; border-left: 0; padding: 24px 32px 24px 0; }
   .portal-role + .portal-role { border-top: 1px solid #a3b9b026; }
