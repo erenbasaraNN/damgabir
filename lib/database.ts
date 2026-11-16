@@ -165,6 +165,7 @@ const schema = `
     CREATE TABLE IF NOT EXISTS @nfc_read (tap TEXT PRIMARY KEY);
     CREATE TABLE IF NOT EXISTS @counter_qr (id INTEGER PRIMARY KEY CHECK(id=1), code TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS @ticket (id TEXT PRIMARY KEY, customer TEXT NOT NULL, reward TEXT NOT NULL, redeemed TEXT);
+    CREATE INDEX IF NOT EXISTS @ticket_customer_redeemed ON @ticket(customer,redeemed);
     CREATE TABLE IF NOT EXISTS @activity (id INTEGER PRIMARY KEY, customer TEXT NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL, branch TEXT NOT NULL, seal TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS @activity_customer_day ON @activity(customer,day,kind);
 `
@@ -193,9 +194,9 @@ export async function wallet(db: LoyaltyDatabase, customer?: string) {
 }
 
 // Zero represents a code with no expiration.
-export async function issueCode(db: LoyaltyDatabase, kind: 'stamp' | 'redeem', branch: string, seal: string, holder?: string, ticket?: string, expires = Date.now() + 120000) {
+export async function issueCode(db: LoyaltyDatabase, branch: string, seal: string, expires = Date.now() + 120000) {
   const code = token()
-  await db.prepare('INSERT INTO @codes VALUES (?,?,?,?,?,?,?)').run(digest(code),kind,expires,branch,seal,holder ?? null,ticket ?? null)
+  await db.prepare("INSERT INTO @codes (id,kind,expires,branch,seal) VALUES (?,'stamp',?,?,?)").run(digest(code),expires,branch,seal)
   return {code,expires}
 }
 
@@ -227,7 +228,7 @@ export async function counterQrCode(db: LoyaltyDatabase) {
   return db.transaction(async tx => {
     const previous = await activeCounterQr(tx)
     if (previous) return previous
-    const {code} = await issueCode(tx, 'stamp', 'Merkez', 'Kasa QR', undefined, undefined, 0)
+    const {code} = await issueCode(tx, 'Merkez', 'Kasa QR', 0)
     await tx.prepare('INSERT INTO @counter_qr (id,code) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET code=excluded.code').run(code)
     return code
   })
@@ -237,13 +238,17 @@ export async function useCode(db: LoyaltyDatabase, code: string, customer: strin
   return db.transaction(async db => {
     const row = await findActiveCode(db,code)
     if (!row) throw new Error('Kod kullanıldı veya süresi doldu.')
-    if (row.kind === 'redeem') {
-      if (row.customer !== customer || typeof row.ticket !== 'string') throw new Error('Kod bu ödül bileti için geçerli değil.')
-      const result = await db.prepare('UPDATE @ticket SET redeemed=? WHERE id=? AND customer=? AND redeemed IS NULL').run(new Date().toISOString(), row.ticket, customer)
+    const legacyRedemption = row.kind === 'redeem'
+    if (legacyRedemption && (row.customer !== customer || typeof row.ticket !== 'string')) throw new Error('Kod bu ödül bileti için geçerli değil.')
+    const reward = legacyRedemption ? row.ticket : (await db.prepare('SELECT id FROM @ticket WHERE customer=? AND redeemed IS NULL ORDER BY rowid LIMIT 1').get(customer))?.id
+    const day = today()
+    const action = typeof reward === 'string' ? 'redeem' : 'stamp'
+    if (typeof reward === 'string') {
+      const result = await db.prepare('UPDATE @ticket SET redeemed=? WHERE id=? AND customer=? AND redeemed IS NULL').run(new Date().toISOString(), reward, customer)
       if (!result.changes) throw new Error('Bu bilet daha önce kullanıldı.')
+      await db.prepare('UPDATE @customer SET last_visit=? WHERE id=?').run(day,customer)
     } else {
       const rules = await campaign(db)
-      const day = today()
       const visits = await db.prepare("SELECT count(*) AS total FROM @activity WHERE customer=? AND day=? AND kind='stamp'").get(customer, day)
       if (!unlimited && Number(visits?.total) >= rules.daily) throw new Error('Bugünkü damga limitine ulaştın.')
       const count = Number((await db.prepare('SELECT stamps FROM @customer WHERE id=?').get(customer))?.stamps) + 1
@@ -253,8 +258,8 @@ export async function useCode(db: LoyaltyDatabase, code: string, customer: strin
       if (earned) await db.prepare('INSERT INTO @ticket (id,customer,reward) VALUES (?,?,?)').run(token(),customer,rules.reward)
     }
     await db.prepare('DELETE FROM @codes WHERE id=?').run(digest(code))
-    await db.prepare('INSERT INTO @activity (customer,day,kind,branch,seal) VALUES (?,?,?,?,?)').run(customer,today(),String(row.kind),String(row.branch),String(row.seal))
-    return { ...await wallet(db,customer), action: row.kind }
+    await db.prepare('INSERT INTO @activity (customer,day,kind,branch,seal) VALUES (?,?,?,?,?)').run(customer,day,action,String(row.branch),String(row.seal))
+    return { ...await wallet(db,customer), action }
   })
 }
 

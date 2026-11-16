@@ -90,6 +90,7 @@ export default function Wallet({name,code,preview,business,program,onSessionExpi
   const stamps = state.customer?.stamps ?? 0
   const canStamp = Boolean(preview || (code && !used))
   const available = state.tickets.filter(ticket => !ticket.redeemed).length
+  const nextReward = state.tickets.findLast(ticket => !ticket.redeemed)
 
   return <div data-stamp-motion="enabled" className={'wallet-shell'+(!state.customer ? ' onboarding' : '')}>
     <AnimatePresence>
@@ -109,7 +110,7 @@ export default function Wallet({name,code,preview,business,program,onSessionExpi
         <p className="reward-celebration-label">Altın bilet</p>
         <h2 id="earned-heading">Tebrikler!</h2>
         <strong>{earnedTicket.reward}</strong>
-        <p>Ödülün cüzdanına eklendi.</p>
+        <p>Ödülünü bir sonraki kasa okutmanda kullanabilirsin.</p>
       </div>
       <button className="primary" autoFocus onClick={() => {
         setTab('tickets')
@@ -132,7 +133,7 @@ export default function Wallet({name,code,preview,business,program,onSessionExpi
         <article hidden={!state.customer} data-stamping={impact !== null} className={'paper'+(impact !== null ? ' paper-impact' : '')} aria-label="Sadakat kartı">
           <div className="wallet-card-finish" aria-hidden="true"/><div className="paper-top"><div><span className="eyebrow">SADAKAT KARTI</span><h2>{state.campaign.reward}</h2></div><span className="stamp-counter">{stamps}<small> / {state.campaign.goal}</small></span></div>
           <div className="stamp-grid" aria-label={stamps + ' damga'}>
-            {Array.from({length:state.campaign.goal},(_,index) => <div className="stamp-cell" data-next={canStamp && index === stamps && impact === null} key={index}>
+            {Array.from({length:state.campaign.goal},(_,index) => <div className="stamp-cell" data-next={canStamp && !nextReward && index === stamps && impact === null} key={index}>
               <div className={'stamp-slot'+(index < stamps ? ' inked' : '')+(impact === index ? ' landing' : '')}>
                 {index < stamps || impact === index ? <><MarkIcon size={22} strokeWidth={1.65}/><span className="ink-lettering">DAMGA</span></> : index === state.campaign.goal - 1 ? <Ticket size={20}/> : <span>{String(index+1).padStart(2,'0')}</span>}
               </div>
@@ -142,16 +143,22 @@ export default function Wallet({name,code,preview,business,program,onSessionExpi
           <div className="paper-foot"><span>{state.campaign.goal - stamps} damga sonra ödül senin.</span><div className="progress" aria-hidden="true"><i style={{width: stamps / state.campaign.goal * 100 + '%'}}/></div></div>
         </article>
         {state.customer ? <div className="wallet-action">
-          {!canStamp && <p><ScanLine size={17}/> Kasadaki NFC kartını veya QR kodu okutarak damga ekle.</p>}
-          {code && !used && <button className="primary stamp-trigger" disabled={pending || !ready} onClick={() => run('claim',{code})}><Stamp size={21}/>{pending ? 'Damgan işleniyor…' : 'Damganı bas'}</button>}
-          {preview && <><button className="primary stamp-trigger" disabled={pending} onClick={() => run('stamp')}><Stamp size={18}/> Damganı bas</button><button className="secondary" disabled={pending} onClick={() => run('reset')}>Önizleme kartını sıfırla</button></>}
+          {!canStamp && <p><ScanLine size={17}/> {nextReward ? 'Ödülünü kullanmak için kasadaki NFC kartını veya QR’ı okut.' : 'Kasadaki NFC kartını veya QR kodu okutarak damga ekle.'}</p>}
+          {canStamp && <>
+            {nextReward && <p>{nextReward.reward}</p>}
+            <button className="primary stamp-trigger" disabled={pending || !ready} onClick={() => preview ? run('stamp') : run('claim',{code})}>
+              {nextReward ? <Ticket size={21}/> : <Stamp size={21}/>}
+              {pending ? 'İşleniyor…' : nextReward ? 'Ödülümü kullan' : 'Damganı bas'}
+            </button>
+          </>}
+          {preview && <button className="secondary" disabled={pending} onClick={() => run('reset')}>Önizleme kartını sıfırla</button>}
         </div> : <form className="join welcome-form" onSubmit={event => {event.preventDefault();void run('join',{phone})}}>
           <h2>{code ? 'Damganı cüzdanına ekle' : 'Sadakat kartını aç'}</h2>
           <PhoneInput value={phone} onChange={setPhone}/>
           <button className="primary" disabled={pending || !ready}>{pending ? 'İşleniyor…' : 'Kartımı aç'}<ArrowRight size={17}/></button>
         </form>}
       </> : <div className="tickets">
-        {state.tickets.length ? state.tickets.map(ticket => <article className="reward" key={ticket.id}><div className="ticket-icon"><Ticket size={31}/></div><div><span className="eyebrow">{ticket.redeemed ? 'KULLANILDI' : 'ÖDÜL BİLETİ'}</span><h2>{ticket.reward}</h2>{!ticket.redeemed && <details><summary>Bilet kodunu göster</summary><code>{ticket.id}</code></details>}{preview && !ticket.redeemed && <button className="secondary" disabled={pending} onClick={() => run('redeem',{ticket:ticket.id})}>Ödülü kullan</button>}</div></article>) : <article className="empty"><Ticket size={27}/><h2>Henüz ödül biletin yok</h2><p>Kartı doldurduğunda biletin burada görünecek.</p></article>}
+        {state.tickets.length ? state.tickets.map(ticket => <article className="reward" key={ticket.id}><div className="ticket-icon"><Ticket size={31}/></div><div><span className="eyebrow">{ticket.redeemed ? 'KULLANILDI' : 'ÖDÜL BİLETİ'}</span><h2>{ticket.reward}</h2>{!ticket.redeemed && <p>Bir sonraki kasa okutmanda kullanılabilir.</p>}</div></article>) : <article className="empty"><Ticket size={27}/><h2>Henüz ödül biletin yok</h2><p>Kartı doldurduğunda biletin burada görünecek.</p></article>}
       </div>}
       {notice && <p className="notice" role="status">{notice}</p>}
       {error && <p className="error" role="alert">{error}</p>}

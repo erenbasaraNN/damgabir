@@ -8,7 +8,9 @@ import Wallet from '../wallet/wallet'
 
 type Customer = {phone:string;stamps:number;last_visit:string|null}
 type Revision = Campaign & {id:number;name:string;changed:string;kind:string}
-type Overview = {campaign:Campaign;day:string;issued?:number;history:Revision[];customers:Customer[];activity:{day:string;kind:string;branch:string;seal:string}[];totals:{customers:number;stamps:number;tickets:number}}
+type Activity = {id:number;day:string;kind:string;branch:string;seal:string;phone:string|null}
+type ActivityFeed = {activity:Activity[];totals:{stamps:number;tickets:number}}
+type Overview = {campaign:Campaign;day:string;issued?:number;history:Revision[];customers:Customer[];activity:Activity[];totals:ActivityFeed['totals'] & {customers:number}}
 type CounterQr = {url:string;qr:string}
 type Issued = {url:string;qr:string;expires:number;code:string}
 const sections = [{id:'home',label:'Genel bakış',icon:Grid2X2},{id:'codes',label:'Kasa işlemleri',icon:ScanLine},{id:'campaign',label:'Kampanyalar',icon:Stamp},{id:'customers',label:'Müşteriler',icon:Users},{id:'messages',label:'WhatsApp',icon:MessageCircle},{id:'preview',label:'Cüzdan önizlemesi',icon:Eye}] as const
@@ -28,7 +30,6 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
   const [notice,setNotice] = useState('')
   const [pending,setPending] = useState(false)
   const [segment,setSegment] = useState('all')
-  const [kind,setKind] = useState('stamp')
   const [issued,setIssued] = useState<Issued>()
   const [counterQr,setCounterQr] = useState<CounterQr>()
   const [counterQrError,setCounterQrError] = useState('')
@@ -122,6 +123,29 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
     return () => {active = false;clearTimeout(timer)}
   },[business,counterVisible,sessionExpired])
 
+  const activityVisible = Boolean(data) && view === 'home'
+  useEffect(() => {
+    if (!activityVisible) return
+    let active = true
+    let timer: ReturnType<typeof setTimeout>
+    async function refresh() {
+      try {
+        const result = await loyalty<ActivityFeed>({action:'activity'},business)
+        if (!active) return
+        setData(previous => previous && {...previous,activity:result.activity,totals:{...previous.totals,...result.totals}})
+      } catch (error) {
+        if (!active) return
+        if (error instanceof LoyaltyError && error.status === 401) {
+          sessionExpired()
+          return
+        }
+      }
+      timer = setTimeout(refresh,4000)
+    }
+    void refresh()
+    return () => {active = false;clearTimeout(timer)}
+  },[activityVisible,business,sessionExpired])
+
   async function run(action:string, payload:Record<string,unknown> = {}) {
     setError('');setNotice('');setPending(true)
     try {
@@ -204,7 +228,7 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
       <header className="admin-header" data-enter><div><span className="eyebrow">{businessName.toLocaleUpperCase("tr-TR")} / İŞLETME</span><h1>{sections.find(item => item.id === view)?.label}</h1><p>{descriptions[view]}</p></div>{view === 'home' && <button className="primary" onClick={() => switchTo('codes')}><ScanLine size={17}/> Kasa işlemi</button>}</header>
       {view === 'home' && <>
         <div className="metrics">{([{label:'Toplam müşteri',icon:Users,value:data.totals.customers},{label:'Verilen damga',icon:Stamp,value:data.totals.stamps},{label:'Açık ödül bileti',icon:Ticket,value:data.totals.tickets}]).map(({label,icon:Icon,value}) => <article className="panel metric" key={label}><span><Icon size={19}/>{label}</span><strong>{value}</strong></article>)}</div>
-        <section className="panel activity"><div className="form-heading"><h2>Son işlemler</h2><button className="secondary" disabled={pending} onClick={() => run('overview')}>Yenile</button></div>{data.activity.length ? <div className="table-wrap"><table><thead><tr><th>İşlem</th><th>Tarih</th><th>Şube</th><th>Mühür / Kart</th></tr></thead><tbody>{data.activity.map((item,index) => <tr key={index}><td>{item.kind === 'stamp' ? 'Damga verildi' : 'Ödül kullanıldı'}</td><td>{item.day}</td><td>{item.branch}</td><td>{item.seal}</td></tr>)}</tbody></table></div> : <p>İlk kasa işlemi burada görünecek.</p>}</section>
+        <section className="panel activity"><div className="form-heading"><h2>Son işlemler</h2><button className="secondary" disabled={pending} onClick={() => run('overview')}>Yenile</button></div>{data.activity.length ? <div className="table-wrap"><table><thead><tr><th>İşlem</th><th>Tarih</th><th>Şube</th><th>Mühür / Kart</th></tr></thead><tbody>{data.activity.map(item => <tr key={item.id}><td>{item.kind === 'stamp' ? 'Damga verildi' : item.phone ? `+90 ${item.phone} ödül kullandı` : 'Ödül kullanıldı'}</td><td>{item.day}</td><td>{item.branch}</td><td>{item.seal}</td></tr>)}</tbody></table></div> : <p>İlk kasa işlemi burada görünecek.</p>}</section>
       </>}
       {view === 'campaign' && rules && <div className="admin-grid">
         <form className="panel admin-form" onSubmit={event => {event.preventDefault();void run('campaign',{...rules,name,mode})}}>
@@ -236,14 +260,12 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
             <input ref={counterUrl} aria-label="Otomatik damga bağlantısı" readOnly value={counterQr.url} onFocus={event => event.target.select()}/>
             <button type="button" className="secondary" onClick={() => void copyLink(counterQr.url,counterUrl.current)}><ClipboardCopy size={16}/> Bağlantıyı kopyala</button>
           </> : <p role="status">QR hazırlanıyor…</p>}
-          <p>QR, bir müşteri damgasını aldığında kendiliğinden yenilenir. Ayarlanmış NFC kartı her dokunuşta kendi tek kullanımlık bağlantısını üretir.</p>
+          <p>QR her başarılı işlemde yenilenir. Müşterinin hazır ödülü varsa aynı QR veya NFC bağlantısıyla kullanabilir.</p>
         </section>
-        <details className="panel manual-codes"><summary>Elle damga veya ödül QR’ı oluştur</summary>
-        <div className="admin-grid"><form className="panel admin-form" onSubmit={event => {event.preventDefault();const fields = new FormData(event.currentTarget);void run('issue',{kind,branch:fields.get('branch'),seal:fields.get('seal'),ticket:fields.get('ticket')})}}>
-        <h2>Kasa işlemi başlat</h2><label>İşlem<select value={kind} onChange={event => {setKind(event.target.value);setIssued(undefined)}}><option value="stamp">Damga ver</option><option value="redeem">Ödül kullan</option></select></label>
-        <p>{kind === 'stamp' ? 'Ödeme sonrası müşteriye oluşan QR kodu gösterin.' : 'Müşterinin cüzdanındaki bilet kodunu alın, ardından oluşan QR kodu aynı müşteriye gösterin.'}</p>
+        <details className="panel manual-codes"><summary>Elle kasa QR’ı oluştur</summary>
+        <div className="admin-grid"><form className="panel admin-form" onSubmit={event => {event.preventDefault();const fields = new FormData(event.currentTarget);void run('issue',{branch:fields.get('branch'),seal:fields.get('seal')})}}>
+        <h2>Kasa işlemi başlat</h2><p>Oluşan QR kodu müşteriye gösterin.</p>
         <div className="form-row"><label>Şube<input name="branch" defaultValue="Merkez" maxLength={50}/></label><label>Mühür / Kart<input name="seal" placeholder="Kasa 1" maxLength={50}/></label></div>
-        {kind === 'redeem' && <label>Müşterinin bilet kodu<input name="ticket" required/></label>}
         <button className="primary" disabled={pending}><ScanLine size={17}/> QR kod oluştur</button>
       </form><section className="panel qr-panel"><h2>Müşteriye göster</h2>{issued && seconds > 0 && !closed ? <>
         <svg viewBox="0 0 45 45" className="qr-code" role="img" aria-label="İşlem bağlantısının QR kodu" shapeRendering="crispEdges"><rect width="45" height="45" fill="white"/><path d={issued.qr} fill="#101814"/></svg>

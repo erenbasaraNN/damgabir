@@ -113,6 +113,26 @@ export async function merchantCustomers(db: LoyaltyDatabase, tenant: string) {
   return [...customers.values()].sort((a,b) => (b.last_visit ?? '').localeCompare(a.last_visit ?? '') || a.phone.localeCompare(b.phone))
 }
 
+export async function recentMerchantActivity(db: LoyaltyDatabase, tenant: string) {
+  const rows = await db.prepare(`
+    SELECT a.id,a.customer,a.day,a.kind,a.branch,a.seal,c.phone
+    FROM @activity a LEFT JOIN @customer c ON c.id=a.customer ORDER BY a.id DESC LIMIT 12
+  `).all()
+  const cards = [...new Set(rows.filter(row => row.kind === 'redeem').map(row => String(row.customer)))]
+  const phones = new Map<string, string>()
+  if (cards.length) {
+    const identity = await platform()
+    const members = await identity.prepare(`
+      SELECT m.card,p.phone FROM @membership m JOIN @person p ON p.id=m.person
+      WHERE m.tenant=? AND m.card IN (${cards.map(() => '?').join(',')})
+    `).all(tenant,...cards)
+    for (const member of members) phones.set(String(member.card),String(member.phone))
+  }
+  return rows.map(({id,customer,day,kind,branch,seal,phone}) => ({
+    id,day,kind,branch,seal,phone:kind === 'redeem' ? phones.get(String(customer)) ?? (phone || null) : null,
+  }))
+}
+
 export async function customerCards(person: Person) {
   const db = await platform()
   const businesses = await listBusinesses()
