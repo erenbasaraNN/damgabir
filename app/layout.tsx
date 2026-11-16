@@ -5,6 +5,7 @@ import './styles/wallet.css'
 import './styles/portal.css'
 import './styles/brand.css'
 import './styles/appearance.css'
+import './styles/product-home.css'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.DAMGABIR_PUBLIC_ORIGIN || 'http://localhost:3000'),
