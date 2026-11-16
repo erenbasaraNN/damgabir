@@ -7,5 +7,5 @@ export default async function BusinessPanel({params}: {params: Promise<{slug: st
   const {slug} = await params
   const business = await findBusiness(slug)
   if (!business) notFound()
-  return <Merchant business={slug} initialAppearance={{name:business.name,theme:business.theme,logoUrl:business.logoUrl}} walletUrl={businessWalletPath(slug)} />
+  return <Merchant business={slug} initialAppearance={{name:business.name,theme:business.theme,style:business.style,logoUrl:business.logoUrl}} walletUrl={businessWalletPath(slug)} />
 }

@@ -4,7 +4,7 @@ import { businessWalletPath } from '../../../lib/tenant'
 import { loyaltyContext } from '../../../lib/loyalty-context'
 import { qrPath } from '../../../lib/qr'
 import { keyMatches, ownerKeyHash, updateBusinessAppearance } from '../../../lib/business'
-import { isWalletTheme } from '../../../lib/business-appearance'
+import { isWalletStyle, isWalletTheme } from '../../../lib/business-appearance'
 import { ensureCard, findOrCreatePerson, legacyCard, membershipCard, merchantCustomers, readPerson, recentMerchantActivity, restoreLegacyPerson, startCustomerSession } from '../../../lib/customer'
 import { phoneDigits, phoneFormatError, validPhone } from '../../../lib/phone'
 
@@ -91,10 +91,11 @@ export async function POST(request: NextRequest) {
 
     if (body.action === 'appearance' && business) {
       const name = typeof body.name === 'string' ? body.name.trim() : ''
-      const {theme,logo} = body
+      const {theme,style,logo} = body
       if (name.length < 2 || name.length > 80 || !isWalletTheme(theme)) return reply({error:'2–80 karakterlik bir işletme adı girin ve bir tema seçin.'},400)
       if (logo !== undefined && logo !== null && typeof logo !== 'string') return reply({error:'Geçerli bir PNG, JPEG veya WebP logo seçin.'},400)
-      const saved = await updateBusinessAppearance(business.slug,name,theme,logo)
+      if (style !== undefined && !isWalletStyle(style)) return reply({error:'Geçerli bir cüzdan görünümü seçin.'},400)
+      const saved = await updateBusinessAppearance(business.slug,{name,theme,style,logo})
       return saved ? reply(saved) : reply({error:'Logo okunamadı veya dosya boyutu çok büyük.'},400)
     }
 

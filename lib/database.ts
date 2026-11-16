@@ -176,6 +176,7 @@ const businessSchema = schema.replace('Bir kahve bizden', 'Sadakat ödülü') + 
 const platformSchema = `
     CREATE TABLE IF NOT EXISTS @business (slug TEXT PRIMARY KEY, name TEXT NOT NULL, key_hash TEXT NOT NULL, created TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS @business_appearance (slug TEXT PRIMARY KEY, theme TEXT NOT NULL, logo TEXT, logo_version TEXT);
+    CREATE TABLE IF NOT EXISTS @business_wallet_style (slug TEXT PRIMARY KEY, style TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS @person (id TEXT PRIMARY KEY, phone TEXT NOT NULL UNIQUE);
     CREATE TABLE IF NOT EXISTS @person_session (id TEXT PRIMARY KEY, person TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS @person_session_expiry ON @person_session(expires);

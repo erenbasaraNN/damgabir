@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { database, digest, token } from './database.ts'
 import { launchMode } from './settings.ts'
 import { businessWalletPath, validBusinessSlug } from './tenant.ts'
-import { businessLogoType, defaultWalletTheme, isWalletTheme, maxBusinessLogoBytes, type BusinessAppearance, type WalletTheme } from './business-appearance.ts'
+import { businessLogoType, defaultWalletTheme, initialWalletStyle, isWalletStyle, isWalletTheme, maxBusinessLogoBytes, type BusinessAppearance, type WalletStyle, type WalletTheme } from './business-appearance.ts'
 
 export type Business = {slug: string; name: string; created: string}
 
@@ -20,13 +20,16 @@ export async function findBusiness(slug: string) {
   if (!validBusinessSlug(slug)) return undefined
   const db = await database('platform')
   const row = await db.prepare(`
-    SELECT b.name,b.key_hash,a.theme,a.logo_version FROM @business b
-    LEFT JOIN @business_appearance a ON a.slug=b.slug WHERE b.slug=?
+    SELECT b.name,b.key_hash,a.theme,a.logo_version,w.style FROM @business b
+    LEFT JOIN @business_appearance a ON a.slug=b.slug
+    LEFT JOIN @business_wallet_style w ON w.slug=b.slug WHERE b.slug=?
   `).get(slug)
   if (!row) return undefined
+  const theme = isWalletTheme(row.theme) ? row.theme : defaultWalletTheme
   const appearance: BusinessAppearance = {
     name: String(row.name),
-    theme: isWalletTheme(row.theme) ? row.theme : defaultWalletTheme,
+    theme,
+    style: isWalletStyle(row.style) ? row.style : initialWalletStyle(theme),
     logoUrl: typeof row.logo_version === 'string' ? `${businessWalletPath(slug)}/logo?v=${row.logo_version}` : null,
   }
   return { slug, ...appearance, keyHash: String(row.key_hash) }
@@ -45,7 +48,7 @@ function decodeLogo(value: string) {
   if (png || jpeg || webp) return {type,bytes}
 }
 
-export async function updateBusinessAppearance(slug: string, name: string, theme: WalletTheme, logo?: string | null) {
+export async function updateBusinessAppearance(slug: string, {name,theme,style,logo}: {name:string;theme:WalletTheme;style?:WalletStyle;logo?:string|null}) {
   if (typeof logo === 'string' && !decodeLogo(logo)) return undefined
   const db = await database('platform')
   return db.transaction(async tx => {
@@ -58,8 +61,12 @@ export async function updateBusinessAppearance(slug: string, name: string, theme
         ON CONFLICT(slug) DO UPDATE SET theme=excluded.theme,logo=excluded.logo,logo_version=excluded.logo_version
       `).run(slug,theme,logo,logo ? digest(logo) : null)
     }
-    const row = await tx.prepare('SELECT logo_version FROM @business_appearance WHERE slug=?').get(slug)
-    return {name,theme,logoUrl:typeof row?.logo_version === 'string' ? `${businessWalletPath(slug)}/logo?v=${row.logo_version}` : null}
+    if (style) await tx.prepare('INSERT INTO @business_wallet_style (slug,style) VALUES (?,?) ON CONFLICT(slug) DO UPDATE SET style=excluded.style').run(slug,style)
+    const row = await tx.prepare(`
+      SELECT a.logo_version,w.style FROM @business_appearance a
+      LEFT JOIN @business_wallet_style w ON w.slug=a.slug WHERE a.slug=?
+    `).get(slug)
+    return {name,theme,style:isWalletStyle(row?.style) ? row.style : initialWalletStyle(theme),logoUrl:typeof row?.logo_version === 'string' ? `${businessWalletPath(slug)}/logo?v=${row.logo_version}` : null}
   })
 }
 

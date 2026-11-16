@@ -20,5 +20,5 @@ export default async function BusinessWallet({params, searchParams}: {
   const business = await getBusiness(slug)
   if (!business) notFound()
   const {code} = await searchParams
-  return <Wallet name={business.name} theme={business.theme} logoUrl={business.logoUrl} business={slug} code={typeof code === 'string' ? code : undefined} />
+  return <Wallet name={business.name} theme={business.theme} style={business.style} logoUrl={business.logoUrl} business={slug} code={typeof code === 'string' ? code : undefined} />
 }

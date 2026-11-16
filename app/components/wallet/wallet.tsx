@@ -5,15 +5,15 @@ import { ArrowRight, ScanLine, Stamp, Ticket, WalletCards } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { businessWalletPath } from '../../../lib/tenant'
 import { WalletCard, WalletIdentity } from './wallet-card'
-import { defaultWalletTheme, type WalletTheme } from '../../../lib/business-appearance'
+import { defaultWalletStyle, defaultWalletTheme, type WalletStyle, type WalletTheme } from '../../../lib/business-appearance'
 import PhoneInput from '../portal/phone-input'
 import { loyalty, LoyaltyError, type Campaign } from '../../client'
 
 type State = {campaign:Campaign;customer:{id:string;stamps:number}|null;tickets:{id:string;reward:string;redeemed:string|null}[];action?:string}
 const initial: State = {campaign:{goal:8,daily:1,reward:'Bir kahve bizden',locked:0},customer:null,tickets:[]}
 
-export default function Wallet({name,code,preview,business,program,theme = defaultWalletTheme,logoUrl,onSessionExpired}: {
-  name:string;code?:string;preview?:boolean;business?:string;program?:'kavak';theme?:WalletTheme;logoUrl?:string|null;onSessionExpired?:()=>void
+export default function Wallet({name,code,preview,business,program,theme = defaultWalletTheme,style = defaultWalletStyle,logoUrl,onSessionExpired}: {
+  name:string;code?:string;preview?:boolean;business?:string;program?:'kavak';theme?:WalletTheme;style?:WalletStyle;logoUrl?:string|null;onSessionExpired?:()=>void
 }) {
   const [state,setState] = useState<State>(initial)
   const [phone,setPhone] = useState('')
@@ -94,7 +94,7 @@ export default function Wallet({name,code,preview,business,program,theme = defau
   const available = state.tickets.filter(ticket => !ticket.redeemed).length
   const nextReward = state.tickets.findLast(ticket => !ticket.redeemed)
 
-  return <div data-stamp-motion="enabled" data-wallet-theme={theme} className={'wallet-shell'+(!state.customer ? ' onboarding' : '')}>
+  return <div data-stamp-motion="enabled" data-wallet-theme={theme} data-wallet-style={style} className={'wallet-shell'+(!state.customer ? ' onboarding' : '')}>
     <AnimatePresence>
       {(!introDone || !ready) && <motion.div className="arrival" key="arrival" exit={{opacity:0,filter:'blur(8px)'}} transition={{duration:.45}} role="status" aria-label="Cüzdan açılıyor">
         {logoUrl ? <img className="business-logo arrival-logo" src={logoUrl} alt=""/> :

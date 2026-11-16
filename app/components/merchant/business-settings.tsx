@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react'
 import { ArrowDown, Check, ImagePlus, Save, Stamp, Ticket } from 'lucide-react'
-import { businessLogoTypes, maxBusinessLogoBytes, walletThemes, type BusinessAppearance, type WalletTheme } from '../../../lib/business-appearance'
+import { businessLogoTypes, maxBusinessLogoBytes, walletStyles, walletThemes, type BusinessAppearance, type WalletStyle, type WalletTheme } from '../../../lib/business-appearance'
 import { loyalty, LoyaltyError, type Campaign } from '../../client'
 import Brand from '../brand'
 import { WalletCard, WalletIdentity } from '../wallet/wallet-card'
@@ -36,6 +36,7 @@ export default function BusinessSettings({business,appearance,campaign,onSave,on
   const inputId = useId()
   const [name,setName] = useState(appearance.name)
   const [theme,setTheme] = useState<WalletTheme>(appearance.theme)
+  const [style,setStyle] = useState<WalletStyle>(appearance.style)
   const [logo,setLogo] = useState<string|null>()
   const [uploading,setUploading] = useState(false)
   const [saving,setSaving] = useState(false)
@@ -44,7 +45,9 @@ export default function BusinessSettings({business,appearance,campaign,onSave,on
   const [saved,setSaved] = useState(false)
   const logoUrl = logo === undefined ? appearance.logoUrl : logo
   const busy = saving || uploading
-  const changed = name.trim() !== appearance.name || theme !== appearance.theme || logo !== undefined
+  const changed = name.trim() !== appearance.name || theme !== appearance.theme || style !== appearance.style || logo !== undefined
+  const themeName = walletThemes.find(option => option.id === theme)?.name
+  const styleName = walletStyles.find(option => option.id === style)?.name
 
   async function upload(file?: File) {
     if (!file) return
@@ -61,7 +64,7 @@ export default function BusinessSettings({business,appearance,campaign,onSave,on
     setSaving(true)
     setError('')
     try {
-      const result = await loyalty<BusinessAppearance>({action:'appearance',name,theme,logo},business)
+      const result = await loyalty<BusinessAppearance>({action:'appearance',name,theme,style,logo},business)
       onSave(result)
       setName(result.name)
       setLogo(undefined)
@@ -93,15 +96,29 @@ export default function BusinessSettings({business,appearance,campaign,onSave,on
         {logoError && <p className="error" role="alert">{logoError}</p>}
       </fieldset>
       <fieldset disabled={busy}>
-        <legend>Cüzdan teması</legend>
-        <div className="appearance-themes">
-          {walletThemes.map(option => <label className="appearance-theme" key={option.id}>
+        <legend>Cüzdan görünümü</legend>
+        <div className="appearance-styles">
+          {walletStyles.map(option => <label className="appearance-theme" key={option.id}>
+            <input type="radio" name="wallet-style" value={option.id} checked={style === option.id} onChange={() => {setStyle(option.id);setSaved(false)}}/>
+            <span className="appearance-style-swatch" data-wallet-theme={theme} data-wallet-style={option.id} aria-hidden="true">
+              <span className="appearance-style-card"><span>Aa</span><strong><Stamp size={13}/><Stamp size={13}/><Ticket size={13}/></strong></span>
+              {style === option.id && <span className="appearance-check"><Check size={13}/></span>}
+            </span>
+            <span className="appearance-theme-name">{option.name}</span>
+            <span className="appearance-theme-detail">{option.detail}</span>
+          </label>)}
+        </div>
+      </fieldset>
+      <fieldset disabled={busy}>
+        <legend>Renk paleti</legend>
+        <div className="appearance-palettes">
+          {walletThemes.map(option => <label className="appearance-theme" key={option.id} title={option.detail}>
             <input type="radio" name="wallet-theme" value={option.id} checked={theme === option.id} onChange={() => {setTheme(option.id);setSaved(false)}}/>
-            <span className="appearance-theme-swatch" data-wallet-theme={option.id} aria-hidden="true">
-              <span className="appearance-swatch-card"><span/><span/><strong><Stamp size={13}/><Stamp size={13}/><Ticket size={13}/></strong></span>
+            <span className="appearance-palette-swatch" data-wallet-theme={option.id} aria-hidden="true">
+              <span className="appearance-palette-colors"><i/><i/><i/></span>
               {theme === option.id && <span className="appearance-check"><Check size={13}/></span>}
             </span>
-            <span className="appearance-theme-name">{option.name}</span><span className="appearance-theme-detail">{option.detail}</span>
+            <span className="appearance-theme-name">{option.name}</span>
           </label>)}
         </div>
         <a className="appearance-preview-jump" href={`#${inputId}-preview`}>Canlı önizlemeyi gör <ArrowDown size={16}/></a>
@@ -113,8 +130,8 @@ export default function BusinessSettings({business,appearance,campaign,onSave,on
       {error && <p className="error" role="alert">{error}</p>}
     </form>
     <aside className="appearance-preview" id={`${inputId}-preview`} aria-label="Cüzdan önizlemesi">
-      <h2>Canlı önizleme</h2>
-      <div className="wallet-shell appearance-wallet" data-wallet-theme={theme}>
+      <div className="appearance-preview-heading"><h2>Canlı önizleme</h2><span>{themeName} · {styleName}</span></div>
+      <div className="wallet-shell appearance-wallet" data-wallet-theme={theme} data-wallet-style={style}>
         <div className="wallet-header"><span className="brand"><Brand/></span><span className="wallet-header-label">Sadakat cüzdanı</span></div>
         <div className="wallet-main">
           <WalletIdentity name={name.trim() || appearance.name} campaign={campaign.name ?? 'Sadakat programı'} logoUrl={logoUrl} business preview/>

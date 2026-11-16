@@ -218,7 +218,7 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
     {error && <p className="error" role="alert">{error}</p>}
   </form></main>
 
-  if (view === 'preview') return <div className="preview-shell"><div className="preview-bar"><button className="secondary" onClick={() => switchTo('home')}><ArrowLeft size={17}/> İşletme paneli</button><p>Yönetici önizlemesi · Günlük limit uygulanmaz</p></div><Wallet name={businessName} theme={appearance?.theme} logoUrl={appearance?.logoUrl} business={business} preview onSessionExpired={sessionExpired}/></div>
+  if (view === 'preview') return <div className="preview-shell"><div className="preview-bar"><button className="secondary" onClick={() => switchTo('home')}><ArrowLeft size={17}/> İşletme paneli</button><p>Yönetici önizlemesi · Günlük limit uygulanmaz</p></div><Wallet name={businessName} theme={appearance?.theme} style={appearance?.style} logoUrl={appearance?.logoUrl} business={business} preview onSessionExpired={sessionExpired}/></div>
 
   return <div className="admin">
     <aside className="sidebar">
