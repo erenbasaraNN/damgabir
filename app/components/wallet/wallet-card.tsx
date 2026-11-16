@@ -4,8 +4,9 @@ import PhysicalStamp from './physical-stamp'
 export function WalletIdentity({name,campaign,logoUrl,business,preview}: {name:string;campaign:string;logoUrl?:string|null;business?:boolean;preview?:boolean}) {
   const Mark = business ? Stamp : Coffee
   const Heading = preview ? 'h3' : 'h1'
-  return <div className="wallet-intro" data-enter>
-    <div className="coffee-seal" aria-hidden="true">{logoUrl ? <img className="business-logo" src={logoUrl} alt=""/> : <Mark size={22} strokeWidth={1.6}/>}</div>
+  return <div className={`wallet-intro${logoUrl ? ' wallet-intro-with-logo' : ''}`} data-enter>
+    {logoUrl ? <img className="business-logo wallet-identity-logo" src={logoUrl} alt=""/> :
+      <div className="coffee-seal" aria-hidden="true"><Mark size={22} strokeWidth={1.6}/></div>}
     <Heading className="wallet-name">{name}</Heading>
     <p>{campaign}</p>
   </div>

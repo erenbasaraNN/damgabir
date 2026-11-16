@@ -80,7 +80,8 @@ export default function BusinessSettings({business,appearance,campaign,onSave,on
           <input value={name} minLength={2} maxLength={80} required onChange={event => {setName(event.target.value);setSaved(false)}}/>
         </label>
         <div className="appearance-logo-row">
-          <div className="appearance-logo-tile" aria-hidden="true">{logoUrl ? <img className="business-logo" src={logoUrl} alt=""/> : <Stamp size={25} strokeWidth={1.6}/>}</div>
+          {logoUrl ? <img className="business-logo appearance-upload-logo" src={logoUrl} alt=""/> :
+            <div className="appearance-logo-tile" aria-hidden="true"><Stamp size={25} strokeWidth={1.6}/></div>}
           <div>
             <label className="appearance-upload" htmlFor={inputId}><ImagePlus size={16}/>{logoUrl ? 'Logoyu değiştir' : 'Logo yükle'}</label>
             <input id={inputId} className="appearance-file" type="file" accept={businessLogoTypes.join(',')} aria-describedby={`${inputId}-hint`} onChange={event => {void upload(event.currentTarget.files?.[0]);event.currentTarget.value = ''}}/>

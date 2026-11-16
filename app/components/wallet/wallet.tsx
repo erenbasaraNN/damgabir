@@ -97,7 +97,8 @@ export default function Wallet({name,code,preview,business,program,theme = defau
   return <div data-stamp-motion="enabled" data-wallet-theme={theme} className={'wallet-shell'+(!state.customer ? ' onboarding' : '')}>
     <AnimatePresence>
       {(!introDone || !ready) && <motion.div className="arrival" key="arrival" exit={{opacity:0,filter:'blur(8px)'}} transition={{duration:.45}} role="status" aria-label="Cüzdan açılıyor">
-        <div className="arrival-emblem">{logoUrl ? <img className="business-logo" src={logoUrl} alt=""/> : <><Stamp size={42} strokeWidth={1.3}/><span/></>}</div>
+        {logoUrl ? <img className="business-logo arrival-logo" src={logoUrl} alt=""/> :
+          <div className="arrival-emblem"><Stamp size={42} strokeWidth={1.3}/><span/></div>}
         <h2>damgabir<span>.</span></h2><p>Güzel alışkanlıkların bir karşılığı var.</p><div className="arrival-line"/>
       </motion.div>}
     </AnimatePresence>

@@ -223,7 +223,10 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
   return <div className="admin">
     <aside className="sidebar">
       <div className="brand"><Brand/></div>
-      <div className="workspace"><span>{appearance?.logoUrl ? <img className="business-logo" src={appearance.logoUrl} alt=""/> : <Stamp size={16}/>}</span><div><strong>{businessName}</strong><small>İşletme çalışma alanı</small></div></div>
+      <div className="workspace">
+        {appearance?.logoUrl ? <img className="business-logo workspace-logo" src={appearance.logoUrl} alt=""/> : <span aria-hidden="true"><Stamp size={16}/></span>}
+        <div><strong>{businessName}</strong><small>İşletme çalışma alanı</small></div>
+      </div>
       <nav aria-label="İşletme paneli">{sections.filter(({id}) => id !== 'settings' || (business && appearance)).map(({id,label,icon:Icon}) => <button type="button" key={id} aria-current={view === id ? 'page' : undefined} onClick={() => switchTo(id)}><Icon size={18}/>{label}</button>)}</nav>
       <a className="subtle-link admin-wallet" href={walletUrl} target="_blank" rel="noreferrer">Müşteri cüzdanını aç <ArrowRight size={15}/></a>
       <button className="sidebar-exit" disabled={pending} onClick={() => void logout()}>Oturumu kapat</button>

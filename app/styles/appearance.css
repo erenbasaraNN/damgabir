@@ -132,9 +132,15 @@
 .wallet-shell[data-wallet-theme]:not([data-wallet-theme=orman]) .reward .ticket-icon { background: var(--theme-stamp); color: var(--theme-card-ink); }
 
 .wallet-shell .wallet-name { overflow-wrap: anywhere; }
-.business-logo { display: block; width: 100%; height: 100%; object-fit: contain; }
-.wallet-shell .coffee-seal:has(.business-logo),.wallet-shell .arrival-emblem:has(.business-logo),.workspace > span:has(.business-logo) { background: #fff; padding: 4px; overflow: hidden; }
+.business-logo { display: block; inline-size: auto; block-size: auto; object-fit: contain; }
+.wallet-shell .wallet-intro-with-logo { grid-template-columns: max-content minmax(0, 1fr); gap: 3px clamp(10px, 3vw, 16px); }
+.wallet-identity-logo { grid-row: span 2; max-inline-size: clamp(80px, 29vw, 142px); max-block-size: 62px; }
+.appearance-wallet .wallet-identity-logo { max-inline-size: clamp(74px, 24vw, 114px); max-block-size: 54px; }
+.arrival-logo { max-inline-size: min(60vw, 224px); max-block-size: 100px; animation: emblem-in 1s both; }
+.workspace-logo { flex-shrink: 0; max-inline-size: 62px; max-block-size: 32px; }
+.appearance-upload-logo { flex-shrink: 0; max-inline-size: clamp(72px, 23vw, 112px); max-block-size: 58px; }
 .workspace > span { flex-shrink: 0; }
+.workspace > div { min-width: 0; }
 .workspace strong,.admin-header .eyebrow { overflow-wrap: anywhere; }
 
 .appearance-layout { display: grid; grid-template-columns: minmax(0, 1.24fr) minmax(0, 1fr); gap: 24px; align-items: start; }
