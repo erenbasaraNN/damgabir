@@ -8,7 +8,8 @@ import Wallet from '../wallet/wallet'
 
 type Customer = {phone:string;stamps:number;last_visit:string|null}
 type Revision = Campaign & {id:number;name:string;changed:string;kind:string}
-type Overview = {campaign:Campaign;day:string;issued?:number;history:Revision[];customers:Customer[];activity:{day:string;kind:string;branch:string;seal:string}[];totals:{customers:number;stamps:number;tickets:number};stampEntry:{url:string;qr:string}}
+type Overview = {campaign:Campaign;day:string;issued?:number;history:Revision[];customers:Customer[];activity:{day:string;kind:string;branch:string;seal:string}[];totals:{customers:number;stamps:number;tickets:number}}
+type CounterQr = {url:string;qr:string}
 type Issued = {url:string;qr:string;expires:number;code:string}
 const sections = [{id:'home',label:'Genel bakış',icon:Grid2X2},{id:'codes',label:'Kasa işlemleri',icon:ScanLine},{id:'campaign',label:'Kampanyalar',icon:Stamp},{id:'customers',label:'Müşteriler',icon:Users},{id:'messages',label:'WhatsApp',icon:MessageCircle},{id:'preview',label:'Cüzdan önizlemesi',icon:Eye}] as const
 type View = typeof sections[number]['id']
@@ -29,13 +30,15 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
   const [segment,setSegment] = useState('all')
   const [kind,setKind] = useState('stamp')
   const [issued,setIssued] = useState<Issued>()
+  const [counterQr,setCounterQr] = useState<CounterQr>()
+  const [counterQrError,setCounterQrError] = useState('')
   const [closed,setClosed] = useState(false)
   const [clock,setClock] = useState(0)
   const [message,setMessage] = useState('')
   const [recipientIndex,setRecipientIndex] = useState(0)
   const [batch,setBatch] = useState<{phones:string[];text:string;downloadUrl:string}>()
   const qrUrl = useRef<HTMLInputElement>(null)
-  const stampUrl = useRef<HTMLInputElement>(null)
+  const counterUrl = useRef<HTMLInputElement>(null)
   const downloadUrl = batch?.downloadUrl
   useEffect(() => {
     if (downloadUrl) return () => URL.revokeObjectURL(downloadUrl)
@@ -53,6 +56,8 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
     setRules(undefined)
     setKey('')
     setIssued(undefined)
+    setCounterQr(undefined)
+    setCounterQrError('')
     setBatch(undefined)
     setMessage('')
     setSegment('all')
@@ -91,6 +96,31 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
     },1800)
     return () => {active = false;clearInterval(timer);clearInterval(status)}
   },[issued,business,sessionExpired])
+
+  const counterVisible = Boolean(data) && view === 'codes'
+  useEffect(() => {
+    if (!counterVisible) return
+    let active = true
+    let timer: ReturnType<typeof setTimeout>
+    async function refresh() {
+      try {
+        const result = await loyalty<CounterQr>({action:'counterQr'},business)
+        if (!active) return
+        setCounterQr(previous => previous?.url === result.url ? previous : result)
+        setCounterQrError('')
+      } catch (error) {
+        if (!active) return
+        if (error instanceof LoyaltyError && error.status === 401) {
+          sessionExpired()
+          return
+        }
+        setCounterQrError((error as Error).message)
+      }
+      timer = setTimeout(refresh,2000)
+    }
+    void refresh()
+    return () => {active = false;clearTimeout(timer)}
+  },[business,counterVisible,sessionExpired])
 
   async function run(action:string, payload:Record<string,unknown> = {}) {
     setError('');setNotice('');setPending(true)
@@ -200,11 +230,13 @@ export default function Merchant({walletUrl,business,businessName = "Kavak Kahve
       </section></div>}
       {view === 'codes' && <>
         <section className="panel qr-panel">
-          <h2>Sabit damga QR’ı ve NFC bağlantısı</h2>
-          <svg viewBox="0 0 45 45" className="qr-code" role="img" aria-label="Sabit damga QR kodu" shapeRendering="crispEdges"><rect width="45" height="45" fill="white"/><path d={data.stampEntry.qr} fill="#101814"/></svg>
-          <p>Bu bağlantıyı NFC kartına yazın veya QR’ı kasada gösterin. Her açılışta tek kullanımlık bir damga bağlantısı oluşur.</p>
-          <input ref={stampUrl} aria-label="NFC kartı bağlantısı" readOnly value={data.stampEntry.url} onFocus={event => event.target.select()}/>
-          <button type="button" className="secondary" onClick={() => void copyLink(data.stampEntry.url,stampUrl.current)}><ClipboardCopy size={16}/> NFC bağlantısını kopyala</button>
+          <h2>Otomatik damga QR’ı</h2>
+          {counterQrError ? <p className="error" role="alert">{counterQrError}</p> : counterQr ? <>
+            <svg viewBox="0 0 45 45" className="qr-code" role="img" aria-label="Otomatik damga QR kodu" shapeRendering="crispEdges"><rect width="45" height="45" fill="white"/><path d={counterQr.qr} fill="#101814"/></svg>
+            <input ref={counterUrl} aria-label="Otomatik damga bağlantısı" readOnly value={counterQr.url} onFocus={event => event.target.select()}/>
+            <button type="button" className="secondary" onClick={() => void copyLink(counterQr.url,counterUrl.current)}><ClipboardCopy size={16}/> Bağlantıyı kopyala</button>
+          </> : <p role="status">QR hazırlanıyor…</p>}
+          <p>QR, bir müşteri damgasını aldığında kendiliğinden yenilenir. Ayarlanmış NFC kartı her dokunuşta kendi tek kullanımlık bağlantısını üretir.</p>
         </section>
         <details className="panel manual-codes"><summary>Elle damga veya ödül QR’ı oluştur</summary>
         <div className="admin-grid"><form className="panel admin-form" onSubmit={event => {event.preventDefault();const fields = new FormData(event.currentTarget);void run('issue',{kind,branch:fields.get('branch'),seal:fields.get('seal'),ticket:fields.get('ticket')})}}>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { campaign, database, digest, findActiveCode, issueCode, publishCampaign, stampEntryKey, today, token, useCode, wallet } from '../../../lib/database'
+import { campaign, counterQrCode, database, digest, findActiveCode, issueCode, publishCampaign, today, token, useCode, wallet } from '../../../lib/database'
 import { businessWalletPath } from '../../../lib/tenant'
 import { loyaltyContext } from '../../../lib/loyalty-context'
 import { qrPath } from '../../../lib/qr'
@@ -128,15 +128,20 @@ export async function POST(request: NextRequest) {
     }
 
     const base = host === 'demo' ? (process.env.DAMGABIR_PUBLIC_ORIGIN ?? origin) : `https://${tenant}.damgabir.com`
-    if (body.action === 'issue') {
+    if (body.action === 'counterQr' || body.action === 'issue') {
+      const path = business ? businessWalletPath(business.slug) : '/'
+      const claimUrl = (code: string) => new URL(path + '?code=' + code,base).href
+      if (new TextEncoder().encode(claimUrl('A'.repeat(32))).length > 106) return reply({error:'QR kod için daha kısa bir cüzdan adresi ayarlayın.'},400)
+      if (body.action === 'counterQr') {
+        const url = claimUrl(await counterQrCode(live))
+        return reply({url,qr:qrPath(url)})
+      }
       const kind = body.kind === 'redeem' ? 'redeem' : 'stamp'
       const ticket = str(body.ticket,64)
       const target = kind === 'redeem' ? (await live.prepare('SELECT customer FROM @ticket WHERE id=? AND redeemed IS NULL').get(ticket))?.customer : null
       if (kind === 'redeem' && typeof target !== 'string') return reply({error:'Kullanılabilir ödül bileti bulunamadı.'},404)
-      const path = business ? businessWalletPath(business.slug) : '/'
-      if (new TextEncoder().encode(new URL(path + '?code=' + 'A'.repeat(32), base).href).length > 106) return reply({error:'QR kod için daha kısa bir cüzdan adresi ayarlayın.'},400)
       const {code,expires} = await issueCode(live,kind,str(body.branch,50) || 'Merkez',str(body.seal,50) || 'Kasa',typeof target === 'string' ? target : undefined,ticket)
-      const url = new URL(path + '?code=' + code,base).href
+      const url = claimUrl(code)
       return reply({url,expires,qr:qrPath(url),code})
     }
 
@@ -145,16 +150,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!login && body.action !== 'overview' && body.action !== 'campaign') return reply({error:'İşlem bulunamadı.'},400)
-    const entry = new URL('/d/' + await stampEntryKey(live), base)
-    if (business) entry.searchParams.set('isletme',business.slug)
-    const url = entry.href
     const customers = await merchantCustomers(live,tenant)
     const totals = await live.prepare("SELECT (SELECT count(*) FROM @activity WHERE kind='stamp') AS stamps,(SELECT count(*) FROM @ticket WHERE redeemed IS NULL) AS tickets").get()
     const response = reply({
       campaign:await campaign(live), day:today(), issued,
       history:await live.prepare('SELECT * FROM @campaign_revision ORDER BY id DESC').all(),
       customers,
-      stampEntry: {url, qr:qrPath(url)},
       activity:await live.prepare('SELECT day,kind,branch,seal FROM @activity ORDER BY id DESC LIMIT 12').all(),
       totals:{customers:customers.length,stamps:Number(totals?.stamps),tickets:Number(totals?.tickets)}
     })

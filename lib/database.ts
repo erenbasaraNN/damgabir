@@ -162,6 +162,8 @@ const schema = `
     CREATE INDEX IF NOT EXISTS @merchant_sessions_expires ON @merchant_sessions(expires);
     CREATE TABLE IF NOT EXISTS @codes (id TEXT PRIMARY KEY, kind TEXT NOT NULL, expires INTEGER NOT NULL, branch TEXT NOT NULL, seal TEXT NOT NULL, customer TEXT, ticket TEXT);
     CREATE TABLE IF NOT EXISTS @stamp_entry (id INTEGER PRIMARY KEY CHECK(id=1), key TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS @nfc_read (tap TEXT PRIMARY KEY);
+    CREATE TABLE IF NOT EXISTS @counter_qr (id INTEGER PRIMARY KEY CHECK(id=1), code TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS @ticket (id TEXT PRIMARY KEY, customer TEXT NOT NULL, reward TEXT NOT NULL, redeemed TEXT);
     CREATE TABLE IF NOT EXISTS @activity (id INTEGER PRIMARY KEY, customer TEXT NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL, branch TEXT NOT NULL, seal TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS @activity_customer_day ON @activity(customer,day,kind);
@@ -190,15 +192,6 @@ export async function wallet(db: LoyaltyDatabase, customer?: string) {
   }
 }
 
-export async function stampEntryKey(db: LoyaltyDatabase) {
-  const existing = await db.prepare('SELECT key FROM @stamp_entry WHERE id=1').get()
-  if (typeof existing?.key === 'string') return existing.key
-  await db.prepare('INSERT OR IGNORE INTO @stamp_entry (id,key) VALUES (1,?)').run(token().slice(0,22))
-  const stored = await db.prepare('SELECT key FROM @stamp_entry WHERE id=1').get()
-  if (typeof stored?.key !== 'string') throw new Error('Damga bağlantısı oluşturulamadı.')
-  return stored.key
-}
-
 // Zero represents a code with no expiration.
 export async function issueCode(db: LoyaltyDatabase, kind: 'stamp' | 'redeem', branch: string, seal: string, holder?: string, ticket?: string, expires = Date.now() + 120000) {
   const code = token()
@@ -208,6 +201,36 @@ export async function issueCode(db: LoyaltyDatabase, kind: 'stamp' | 'redeem', b
 
 export function findActiveCode(db: LoyaltyDatabase, code: string) {
   return db.prepare('SELECT * FROM @codes WHERE id=? AND (expires=0 OR expires>?)').get(digest(code),Date.now())
+}
+
+export async function registerNfcCode(db: LoyaltyDatabase, code: string) {
+  const id = digest(code)
+  if (await db.prepare('SELECT 1 FROM @nfc_read WHERE tap=?').get(id)) return Boolean(await findActiveCode(db, code))
+  return db.transaction(async tx => {
+    const recorded = await tx.prepare('INSERT OR IGNORE INTO @nfc_read (tap) VALUES (?)').run(id)
+    if (recorded.changes) {
+      await tx.prepare("INSERT INTO @codes (id,kind,expires,branch,seal) VALUES (?,'stamp',0,'Merkez','NFC')").run(id)
+      return true
+    }
+    return Boolean(await findActiveCode(tx, code))
+  })
+}
+
+async function activeCounterQr(db: LoyaltyDatabase) {
+  const row = await db.prepare('SELECT code FROM @counter_qr WHERE id=1').get()
+  if (typeof row?.code === 'string' && await findActiveCode(db, row.code)) return row.code
+}
+
+export async function counterQrCode(db: LoyaltyDatabase) {
+  const current = await activeCounterQr(db)
+  if (current) return current
+  return db.transaction(async tx => {
+    const previous = await activeCounterQr(tx)
+    if (previous) return previous
+    const {code} = await issueCode(tx, 'stamp', 'Merkez', 'Kasa QR', undefined, undefined, 0)
+    await tx.prepare('INSERT INTO @counter_qr (id,code) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET code=excluded.code').run(code)
+    return code
+  })
 }
 
 export async function useCode(db: LoyaltyDatabase, code: string, customer: string, unlimited = false) {
