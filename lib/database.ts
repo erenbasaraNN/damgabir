@@ -114,8 +114,10 @@ export function database(tenant: string) {
   const business = name.startsWith('business-') && validBusinessSlug(name.slice(9))
   if (tenant !== 'platform' && !business && !Object.hasOwn(tenantNames, name)) throw new Error('İşletme bulunamadı.')
   const initialSchema = tenant === 'platform' ? platformSchema : business ? businessSchema : schema
-  const remoteUrl = process.env.TURSO_DATABASE_URL
-  const authToken = process.env.TURSO_AUTH_TOKEN
+  const useLibsql = process.env.LIBSQL_DATABASE_URL || process.env.LIBSQL_AUTH_TOKEN
+  const remoteUrl = useLibsql ? process.env.LIBSQL_DATABASE_URL : process.env.TURSO_DATABASE_URL
+  const authToken = useLibsql ? process.env.LIBSQL_AUTH_TOKEN : process.env.TURSO_AUTH_TOKEN
+  if (useLibsql && !remoteUrl) throw new Error('Veritabanı bağlantısı eksik.')
   if ((remoteUrl && !authToken) || (!remoteUrl && process.env.VERCEL)) throw new Error('Veritabanı bağlantısı eksik.')
   const dir = resolve(process.env.DAMGABIR_DATA_DIR ?? '.data')
   const key = remoteUrl ? tenant : resolve(dir, tenant)

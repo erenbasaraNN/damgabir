@@ -1,0 +1,15 @@
+services:
+  damgabir:
+    build: .
+    init: true
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DAMGABIR_DATA_DIR: /var/lib/damgabir
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - damgabir-data:/var/lib/damgabir
+
+volumes:
+  damgabir-data:

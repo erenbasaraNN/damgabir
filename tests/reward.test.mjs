@@ -8,6 +8,8 @@ import { counterQrCode, database, issueCode, registerNfcCode, useCode } from '..
 test('stamp codes accumulate rewards and reward NFC uses one oldest ticket without giving stamps', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'damgabir-reward-test-'))
   process.env.DAMGABIR_DATA_DIR = dir
+  delete process.env.LIBSQL_DATABASE_URL
+  delete process.env.LIBSQL_AUTH_TOKEN
   delete process.env.TURSO_DATABASE_URL
   delete process.env.VERCEL
   const db = await database('demo')

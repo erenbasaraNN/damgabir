@@ -37,6 +37,8 @@ test('accepts only the registered card and the signed counter', () => {
 test('each signed tap and each merchant QR can give only one stamp across customers', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'damgabir-nfc-test-'))
   process.env.DAMGABIR_DATA_DIR = dir
+  delete process.env.LIBSQL_DATABASE_URL
+  delete process.env.LIBSQL_AUTH_TOKEN
   delete process.env.TURSO_DATABASE_URL
   delete process.env.VERCEL
   const db = await database('demo')
