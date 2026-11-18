@@ -77,20 +77,28 @@ test('NTAG213 uses each card counter once across customers and keeps card roles 
 
     await db.prepare("INSERT INTO @customer (id,phone) VALUES ('first',''),('second','')").run()
     await db.prepare("INSERT INTO @ticket (id,customer,reward) VALUES ('one','first','Kahve'),('two','first','Kahve')").run()
-    const [stamp,repeat] = await Promise.all([registerNtagRead(db,cards.stamp,'00000A'),registerNtagRead(db,cards.stamp,'00000a')])
+    const counter = cards.stamp.startsWith('00000A') ? '00000B' : '00000A'
+    const stampPath = counter + cards.stamp.slice(6)
+    assert.equal(await registerNtagRead(db,cards.stamp),undefined)
+    assert.equal(await registerNtagRead(otherDb,stampPath),undefined)
+    const [stamp,repeat,pathRead] = await Promise.all([
+      registerNtagRead(db,cards.stamp,counter),registerNtagRead(db,cards.stamp,counter.toLowerCase()),registerNtagRead(db,stampPath)
+    ])
     assert.deepEqual(stamp,repeat)
+    assert.deepEqual(stamp,pathRead)
     assert.equal(stamp.purpose,'stamp')
     const claims = await Promise.allSettled([useCode(db,stamp.code,'first'),useCode(db,stamp.code,'second')])
     assert.equal(claims.filter(result => result.status === 'fulfilled').length,1)
-    assert.equal((await registerNtagRead(db,cards.stamp,'00000A')).active,false)
+    assert.equal((await registerNtagRead(db,stampPath)).active,false)
 
-    const reward = await registerNtagRead(db,cards.redeem,'00000A')
+    const rewardCounter = cards.redeem.startsWith(counter) ? '00000C' : counter
+    const reward = await registerNtagRead(db,rewardCounter + cards.redeem.slice(6))
     assert.equal(reward.purpose,'redeem')
     const redeemed = await useCode(db,reward.code,'first')
     assert.equal(redeemed.action,'redeem')
     assert.equal(redeemed.tickets.filter(ticket => !ticket.redeemed).length,1)
-    assert.equal((await registerNtagRead(db,cards.redeem,'00000A')).active,false)
-    const next = await registerNtagRead(db,cards.stamp,'00000B')
+    assert.equal((await registerNtagRead(db,cards.redeem,rewardCounter)).active,false)
+    const next = await registerNtagRead(db,cards.stamp,'00000D')
     assert.equal((await useCode(db,next.code,'first')).action,'stamp')
   } finally {
     db.close()

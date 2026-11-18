@@ -218,12 +218,17 @@ export function ntagCards(db: LoyaltyDatabase) {
   })
 }
 
-export async function registerNtagRead(db: LoyaltyDatabase, card: string, counter: string) {
-  const value = counter.toLowerCase()
+export async function registerNtagRead(db: LoyaltyDatabase, card: string, counter?: string) {
+  const value = (counter ?? card.slice(0,6)).toLowerCase()
   if (!/^[A-Za-z0-9_-]{32}$/.test(card) || !/^[0-9a-f]{6}$/.test(value) || value === '000000') return
-  const {purpose} = await db.prepare('SELECT purpose FROM @ntag_card WHERE id=?').get(card) ?? {}
+  const matching = counter === undefined
+    ? await db.prepare('SELECT id,purpose FROM @ntag_card WHERE substr(id,7)=? LIMIT 2').all(card.slice(6))
+    : await db.prepare('SELECT id,purpose FROM @ntag_card WHERE id=?').all(card)
+  if (matching.length !== 1) return
+  const {id,purpose} = matching[0]
+  if (typeof id !== 'string' || (counter === undefined && id === card)) return
   if (purpose !== 'stamp' && purpose !== 'redeem') return
-  const code = digest('damgabir-ntag213:' + card + ':' + value)
+  const code = digest('damgabir-ntag213:' + id + ':' + value)
   const active = await registerNfcCode(db,code,purpose)
   return {active,code,purpose}
 }

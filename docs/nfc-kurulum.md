@@ -14,7 +14,7 @@ Kurulum için iki yazılabilir **NTAG213 kart**, NFC’li bir **Android telefon*
 1. Android’de **Ayarlar** içinde **NFC** aratıp açın. Google Play’den **NFC TagWriter by NXP** uygulamasını yükleyin ve açın.
 2. Uygulamada **Write tags → New dataset → Link** seçin.
 3. Adres alanına Damgabir’den kopyaladığınız **damga bağlantısını** yapıştırın. `https://` ayrı bir kutuda seçiliyorsa adresin `https://` sonrasını yapıştırın. Başlık alanını boş bırakın.
-4. **Configure Mirroring Options** seçeneğine dokunun. Kart türü olarak **NTAG213** seçin. **Enable Counter Mirroring** seçeneğini açın, **Enable UID Mirroring** kapalı kalsın ve **OK** deyin. Uygulamanın sürümüne göre aynı sayaç seçeneği **Add Interaction Counter (mirror)** diye görünebilir. URL’nin sonuna `ctr` parametresini uygulama ekler. [NXP TagWriter kılavuzu, §4.2](https://inspire.nxp.com/tagwriter/tag-writer-user-manual.pdf)
+4. **Configure Mirroring Options** seçeneğine dokunun. Kart türü olarak **NTAG213** seçin. **Enable Counter Mirroring** seçeneğini açın, **Enable UID Mirroring** kapalı kalsın ve **OK** deyin. Uygulamanın sürümüne göre aynı sayaç seçeneği **Add Interaction Counter (mirror)** diye görünebilir. Sayaç URL’nin sonuna `?ctr=…` olarak eklenebilir. TagWriter sonda **URL not valid** gösterirse URL’yi paneldeki haliyle bırakın, **Set Offset** ile son `/` işaretinden hemen sonraki ilk karakteri seçin. Bu ayarda kart, kart kimliğinin ilk altı karakterini sayaçla değiştirir. [NXP TagWriter kılavuzu, §4.2](https://inspire.nxp.com/tagwriter/tag-writer-user-manual.pdf)
 5. **Save & Write** seçin. Bir sonraki ekranda **Write** düğmesine dokunun. Koruma veya kalıcı kilit seçeneklerini boş bırakın; böylece kurulum hatası olursa kartı yeniden yazabilirsiniz.
 6. **DAMGA** kartını telefonun arkasına yaklaştırın ve başarılı yazma bildirimi gelene kadar sabit tutun.
 
@@ -26,7 +26,7 @@ Kurulum için iki yazılabilir **NTAG213 kart**, NFC’li bir **Android telefon*
 ## 4. Kasada test edin
 
 1. Yazma uygulamasından çıkın. **DAMGA** kartını normal şekilde okutun, açılan bağlantıya dokunun ve **Damganı bas** düğmesine basın. Bir damga eklenir. Test cüzdanında hazır ödüller varsa yerlerinde kalır.
-2. Telefonun açtığı ilk **`/nfc/…?ctr=…`** adresini tekrar açın. Damgabir **“Bu NFC okuması kullanıldı”** gösterir. Telefonu karttan uzaklaştırıp kartı yeniden okutun. Kartın eklediği sayaç değiştiği için bu yeni bir okumadır.
+2. Telefonun açtığı ilk NFC adresini tekrar açın. Damgabir **“Bu NFC okuması kullanıldı”** gösterir. Telefonu karttan uzaklaştırıp kartı yeniden okutun. Sayaç değiştiği için bu yeni bir okumadır. Sayacı `?ctr=` sonrasında veya son `/` işaretinden sonraki ilk altı karakterde görebilirsiniz.
 3. Açık ödülü olan bir test cüzdanıyla **ÖDÜL** kartını okutun ve bağlantıyı açın. **“NFC ile ödülünü kullandın.”** mesajını görün. En eski açık bilet kullanılır. Damga sayısı ve diğer biletler korunur. Oturum kapalıysa işlem, müşterinin cüzdanını açmasından sonra devam eder.
 4. Açık bilet kalmadığında yeni bir okumayla ÖDÜL kartını tekrar deneyin. **“Kullanabileceğin ödül bileti yok.”** mesajı görünür.
 

@@ -15,7 +15,8 @@ export function HEAD() {
 export async function GET(request: NextRequest, {params}: {params: Promise<{tenant:string;card:string}>}) {
   const {tenant,card} = await params
   const counters = request.nextUrl.searchParams.getAll('ctr')
-  if (counters.length !== 1 || !/^[0-9a-f]{6}$/i.test(counters[0]) || counters[0] === '000000') {
+  const value = counters[0] ?? card.slice(0,6)
+  if (counters.length > 1 || !/^[0-9a-f]{6}$/i.test(value) || value === '000000') {
     return NextResponse.json({error:'Karttan okuma sayacı alınamadı. Kartı yeniden okutun. Sorun sürerse işletme kartın sayaç ayarını kontrol etmeli.'},{status:400,headers})
   }
   const missing = () => NextResponse.json({error:'NFC kartı bu işletmede kayıtlı değil.'},{status:404,headers})
