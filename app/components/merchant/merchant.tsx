@@ -17,7 +17,7 @@ type CounterQr = {url:string;qr:string}
 type Issued = {url:string;qr:string;expires:number;code:string}
 const sections = [{id:'home',label:'Genel bakış',icon:Grid2X2},{id:'codes',label:'Kasa işlemleri',icon:ScanLine},{id:'campaign',label:'Kampanyalar',icon:Stamp},{id:'customers',label:'Müşteriler',icon:Users},{id:'messages',label:'WhatsApp',icon:MessageCircle},{id:'preview',label:'Cüzdan önizlemesi',icon:Eye},{id:'settings',label:'İşletme ayarları',icon:Settings}] as const
 type View = typeof sections[number]['id']
-const descriptions:Record<View,string> = {home:'Sadakat programının güncel durumu ve son kasa hareketleri.',codes:'Kasadaki NFC kartı ve QR koduyla müşterilerinize damga verin.',campaign:'Aktif kuralları güncelleyin veya yeni bir kampanya yayınlayın.',customers:'Damga ilerlemesine ve son ziyaret tarihine göre müşterileri inceleyin.',messages:'Alıcıları seçin, mesajı hazırlayın ve gönderim listesini dışa aktarın.',preview:'Damga birikimini ve ödül kullanımını müşteri cüzdanında deneyin.',settings:'Müşterilerin cüzdanında görünen adı, logoyu ve temayı düzenleyin.'}
+const descriptions:Record<View,string> = {home:'Sadakat programının güncel durumu ve son kasa hareketleri.',codes:'Damga vermek için damga NFC kartını veya kasa QR’ını kullanın. Ödül kullanımı için müşteriye ödül NFC kartını okutun.',campaign:'Aktif kuralları güncelleyin veya yeni bir kampanya yayınlayın.',customers:'Damga ilerlemesine ve son ziyaret tarihine göre müşterileri inceleyin.',messages:'Alıcıları seçin, mesajı hazırlayın ve gönderim listesini dışa aktarın.',preview:'Damga birikimini ve ödül kullanımını müşteri cüzdanında deneyin.',settings:'Müşterilerin cüzdanında görünen adı, logoyu ve temayı düzenleyin.'}
 
 export default function Merchant({walletUrl,business,initialAppearance}: {walletUrl:string;business?:string;initialAppearance?:BusinessAppearance}) {
   const [appearance,setAppearance] = useState(initialAppearance)
@@ -36,6 +36,7 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
   const [segment,setSegment] = useState('all')
   const [issued,setIssued] = useState<Issued>()
   const [counterQr,setCounterQr] = useState<CounterQr>()
+  const [ntagLinks,setNtagLinks] = useState<{stamp:string;redeem:string}>()
   const [counterQrError,setCounterQrError] = useState('')
   const [closed,setClosed] = useState(false)
   const [clock,setClock] = useState(0)
@@ -62,6 +63,7 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
     setKey('')
     setIssued(undefined)
     setCounterQr(undefined)
+    setNtagLinks(undefined)
     setCounterQrError('')
     setBatch(undefined)
     setMessage('')
@@ -157,6 +159,8 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
         setIssued(undefined)
         const result = await loyalty<Issued>({action,...payload},business)
         setClock(Date.now());setClosed(false);setIssued(result)
+      } else if (action === 'ntagCards') {
+        setNtagLinks(await loyalty<{stamp:string;redeem:string}>({action},business))
       } else {
         const result = await loyalty<Overview>({action,...payload},business)
         showOverview(result)
@@ -261,6 +265,16 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
         {batch && <div className="batch"><p>{batch.phones.length} alıcı hazır.</p><blockquote>{batch.text}</blockquote><label>Alıcı seç <select value={recipientIndex} onChange={e => setRecipientIndex(Number(e.target.value))}>{batch.phones.map((phone,index) => <option key={phone} value={index}>+90 {phone}</option>)}</select></label><a className="primary" href={whatsapp(batch.phones[recipientIndex],batch.text)} target="_blank" rel="noreferrer">WhatsApp’ta aç <ArrowRight size={16}/></a><a className="secondary" href={batch.downloadUrl} download="damgabir-whatsapp.csv"><ArrowDownToLine size={16}/> Alıcı listesini indir</a></div>}
       </section></div>}
       {view === 'codes' && <>
+        <section className="panel admin-form">
+          <h2>NTAG213 NFC kartları</h2>
+          <p>Her bağlantıyı ayrı bir karta yazın. NFC TagWriter by NXP uygulamasında okuma sayacı yansıtmasını açın.</p>
+          {ntagLinks ? <div className="form-row">
+            {([{name:'Damga',url:ntagLinks.stamp},{name:'Ödül',url:ntagLinks.redeem}]).map(({name,url}) => <div key={name}>
+              <label>{name} kartı bağlantısı<input readOnly value={url} onFocus={event => event.target.select()}/></label>
+              <button type="button" className="secondary" onClick={event => void copyLink(url,event.currentTarget.parentElement?.querySelector('input') ?? null)}><ClipboardCopy size={16}/> {name} bağlantısını kopyala</button>
+            </div>)}
+          </div> : <button type="button" className="primary" disabled={pending} onClick={() => void run('ntagCards')}><ScanLine size={16}/> Kart bağlantılarını göster</button>}
+        </section>
         <section className="panel qr-panel">
           <h2>Otomatik damga QR’ı</h2>
           {counterQrError ? <p className="error" role="alert">{counterQrError}</p> : counterQr ? <>
@@ -268,7 +282,7 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
             <input ref={counterUrl} aria-label="Otomatik damga bağlantısı" readOnly value={counterQr.url} onFocus={event => event.target.select()}/>
             <button type="button" className="secondary" onClick={() => void copyLink(counterQr.url,counterUrl.current)}><ClipboardCopy size={16}/> Bağlantıyı kopyala</button>
           </> : <p role="status">QR hazırlanıyor…</p>}
-          <p>QR her başarılı işlemde yenilenir. Müşterinin hazır ödülü varsa aynı QR veya NFC bağlantısıyla kullanabilir.</p>
+          <p>QR her başarılı damga işleminden sonra yenilenir.</p>
         </section>
         <details className="panel manual-codes"><summary>Elle kasa QR’ı oluştur</summary>
         <div className="admin-grid"><form className="panel admin-form" onSubmit={event => {event.preventDefault();const fields = new FormData(event.currentTarget);void run('issue',{branch:fields.get('branch'),seal:fields.get('seal')})}}>

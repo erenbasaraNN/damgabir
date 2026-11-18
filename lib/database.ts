@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs'
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
 import { createHash, randomBytes } from 'node:crypto'
 import { tenantNames, validBusinessSlug } from './tenant.ts'
+import type { NfcPurpose } from './nfc.ts'
 
 const connections = new Map<string, Promise<LoyaltyDatabase>>()
 export const token = () => randomBytes(24).toString('base64url')
@@ -163,6 +164,7 @@ const schema = `
     CREATE TABLE IF NOT EXISTS @codes (id TEXT PRIMARY KEY, kind TEXT NOT NULL, expires INTEGER NOT NULL, branch TEXT NOT NULL, seal TEXT NOT NULL, customer TEXT, ticket TEXT);
     CREATE TABLE IF NOT EXISTS @stamp_entry (id INTEGER PRIMARY KEY CHECK(id=1), key TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS @nfc_read (tap TEXT PRIMARY KEY);
+    CREATE TABLE IF NOT EXISTS @ntag_card (purpose TEXT PRIMARY KEY, id TEXT NOT NULL UNIQUE);
     CREATE TABLE IF NOT EXISTS @counter_qr (id INTEGER PRIMARY KEY CHECK(id=1), code TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS @ticket (id TEXT PRIMARY KEY, customer TEXT NOT NULL, reward TEXT NOT NULL, redeemed TEXT);
     CREATE INDEX IF NOT EXISTS @ticket_customer_redeemed ON @ticket(customer,redeemed);
@@ -196,9 +198,9 @@ export async function wallet(db: LoyaltyDatabase, customer?: string) {
 }
 
 // Zero represents a code with no expiration.
-export async function issueCode(db: LoyaltyDatabase, branch: string, seal: string, expires = Date.now() + 120000) {
+export async function issueCode(db: LoyaltyDatabase, branch: string, seal: string, expires = Date.now() + 120000, kind: 'stamp' | 'nfc-reward' = 'stamp') {
   const code = token()
-  await db.prepare("INSERT INTO @codes (id,kind,expires,branch,seal) VALUES (?,'stamp',?,?,?)").run(digest(code),expires,branch,seal)
+  await db.prepare('INSERT INTO @codes (id,kind,expires,branch,seal) VALUES (?,?,?,?,?)').run(digest(code),kind,expires,branch,seal)
   return {code,expires}
 }
 
@@ -206,16 +208,37 @@ export function findActiveCode(db: LoyaltyDatabase, code: string) {
   return db.prepare('SELECT * FROM @codes WHERE id=? AND (expires=0 OR expires>?)').get(digest(code),Date.now())
 }
 
-export async function registerNfcCode(db: LoyaltyDatabase, code: string) {
+export function ntagCards(db: LoyaltyDatabase) {
+  return db.transaction(async tx => {
+    const insert = tx.prepare('INSERT INTO @ntag_card (purpose,id) VALUES (?,?) ON CONFLICT(purpose) DO NOTHING')
+    await insert.run('stamp',token())
+    await insert.run('redeem',token())
+    const card = tx.prepare('SELECT id FROM @ntag_card WHERE purpose=?')
+    return {stamp:String((await card.get('stamp'))?.id),redeem:String((await card.get('redeem'))?.id)}
+  })
+}
+
+export async function registerNtagRead(db: LoyaltyDatabase, card: string, counter: string) {
+  const value = counter.toLowerCase()
+  if (!/^[A-Za-z0-9_-]{32}$/.test(card) || !/^[0-9a-f]{6}$/.test(value) || value === '000000') return
+  const {purpose} = await db.prepare('SELECT purpose FROM @ntag_card WHERE id=?').get(card) ?? {}
+  if (purpose !== 'stamp' && purpose !== 'redeem') return
+  const code = digest('damgabir-ntag213:' + card + ':' + value)
+  const active = await registerNfcCode(db,code,purpose)
+  return {active,code,purpose}
+}
+
+export async function registerNfcCode(db: LoyaltyDatabase, code: string, purpose: NfcPurpose) {
   const id = digest(code)
-  if (await db.prepare('SELECT 1 FROM @nfc_read WHERE tap=?').get(id)) return Boolean(await findActiveCode(db, code))
+  const kind = purpose === 'redeem' ? 'nfc-reward' : 'stamp'
+  if (await db.prepare('SELECT 1 FROM @nfc_read WHERE tap=?').get(id)) return (await findActiveCode(db, code))?.kind === kind
   return db.transaction(async tx => {
     const recorded = await tx.prepare('INSERT OR IGNORE INTO @nfc_read (tap) VALUES (?)').run(id)
     if (recorded.changes) {
-      await tx.prepare("INSERT INTO @codes (id,kind,expires,branch,seal) VALUES (?,'stamp',0,'Merkez','NFC')").run(id)
+      await tx.prepare("INSERT INTO @codes (id,kind,expires,branch,seal) VALUES (?,?,0,'Merkez',?)").run(id,kind,purpose === 'redeem' ? 'Ödül NFC' : 'Damga NFC')
       return true
     }
-    return Boolean(await findActiveCode(tx, code))
+    return (await findActiveCode(tx, code))?.kind === kind
   })
 }
 
@@ -236,13 +259,21 @@ export async function counterQrCode(db: LoyaltyDatabase) {
   })
 }
 
-export async function useCode(db: LoyaltyDatabase, code: string, customer: string) {
+export async function useCode(db: LoyaltyDatabase, code: string, customer: string | undefined) {
   return db.transaction(async db => {
     const row = await findActiveCode(db,code)
     if (!row) throw new Error('Kod kullanıldı veya süresi doldu.')
     const legacyRedemption = row.kind === 'redeem'
+    const nfcRedemption = row.kind === 'nfc-reward'
     if (legacyRedemption && (row.customer !== customer || typeof row.ticket !== 'string')) throw new Error('Kod bu ödül bileti için geçerli değil.')
-    const reward = legacyRedemption ? row.ticket : (await db.prepare('SELECT id FROM @ticket WHERE customer=? AND redeemed IS NULL ORDER BY rowid LIMIT 1').get(customer))?.id
+    const reward = legacyRedemption ? row.ticket : nfcRedemption && customer
+      ? (await db.prepare('SELECT id FROM @ticket WHERE customer=? AND redeemed IS NULL ORDER BY rowid LIMIT 1').get(customer))?.id
+      : undefined
+    if (nfcRedemption && typeof reward !== 'string') {
+      await db.prepare('DELETE FROM @codes WHERE id=?').run(digest(code))
+      return { ...await wallet(db,customer), action: 'reward-unavailable' }
+    }
+    if (!customer) throw new Error('Kod bu sadakat kartı için geçerli değil.')
     const day = today()
     const action = typeof reward === 'string' ? 'redeem' : 'stamp'
     if (typeof reward === 'string') {

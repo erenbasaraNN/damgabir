@@ -5,15 +5,15 @@ import Brand from '../brand'
 import CardPreview from './card-preview'
 
 const steps = [
-  {title:'Kasada okutur', icon:ScanLine, description:'Müşteri kasa QR’ını kamerayla okutur. İşletmede NFC kartı kurulmuşsa telefonunu karta yaklaştırabilir.'},
+  {title:'Kasada okutur', icon:ScanLine, description:'Müşteri kasa QR’ını kamerayla okutur veya telefonunu damga NFC kartına yaklaştırır.'},
   {title:'Damgasını basar', icon:Stamp, description:'İlk gelişinde telefon numarasıyla cüzdanını açar. Damgasını onaylayınca ödüle kaç damga kaldığını görür.'},
-  {title:'Ödülünü kullanır', icon:Gift, description:'Kart dolunca ödül cüzdanına eklenir. Bir sonraki kasa okutmasında ödülünü kendisi onaylar.'},
+  {title:'Ödülünü kullanır', icon:Gift, description:'Kart dolunca ödül cüzdanına eklenir. Müşteri ödüllerini biriktirebilir veya ödül NFC kartını okutarak birini kullanabilir.'},
 ] as const
 
 const questions = [
   {question:'Müşterim uygulama indirmek zorunda mı?', answer:'Müşteri QR’ı okutup cüzdanını telefonunun tarayıcısında açar. Katıldığı işletmelerin kartlarını aynı Damgabir hesabından görebilir.'},
-  {question:'NFC kartı olmadan başlayabilir miyim?', answer:'Evet. İşletme panelindeki otomatik kasa QR’ı tek başına çalışır. NFC kartı, uyumlu bir kart işletmeye tanımlandığında ikinci bir okutma seçeneği sunar.'},
-  {question:'Ödülü kullanmak için ayrı QR gerekir mi?', answer:'Müşterinin hazır ödülü varsa aynı kasa QR’ı veya NFC okutması cüzdanda ödül kullanma seçeneğini açar. Müşteri onayladığında ödül kullanılmış olarak kaydedilir.'},
+  {question:'NFC kartı olmadan başlayabilir miyim?', answer:'İşletme panelindeki otomatik kasa QR’ıyla damga verebilirsiniz. Ödül kullanımı için işletmenize bir ödül NFC kartı tanımlayın.'},
+  {question:'Müşterim ödülünü nasıl kullanır?', answer:'Müşteri kasada ödül NFC kartını okutur. Cüzdanı açıldığında elindeki en eski kullanılabilir ödül bileti işlenir ve müşteri ekranda sonucu görür.'},
   {question:'Bir damga bağlantısı tekrar kullanılabilir mi?', answer:'Başarılı işlemden sonra bağlantı kapanır. Otomatik kasa QR’ı bir sonraki işlem için panelde yenilenir.'},
   {question:'WhatsApp mesajı nasıl gönderilir?', answer:'İşletme panelinde müşteriyi seçip mesajı hazırlarsınız. Damgabir ilgili WhatsApp sohbetini hazır metinle açar, gönderime siz karar verirsiniz.'},
 ] as const

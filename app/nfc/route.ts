@@ -22,11 +22,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({error: 'NFC kartı doğrulanamadı. Kartı tekrar okutun.'}, {status: 404, headers})
     }
 
-    if (!await registerNfcCode(current.db, tap.code)) {
-      return NextResponse.json({error: 'Bu NFC okumasının damgası zaten alındı.'}, {status: 410, headers})
+    if (!await registerNfcCode(current.db, tap.code, tap.purpose)) {
+      return NextResponse.json({error: 'Bu NFC bağlantısı artık geçerli değil. Kartı tekrar okutun.'}, {status: 410, headers})
     }
     const path = current.business ? businessWalletPath(current.business.slug) : '/'
-    return new NextResponse(null, {status: 302, headers: {...headers, Location: path + '?code=' + tap.code}})
+    const query = new URLSearchParams({code: tap.code})
+    if (tap.purpose === 'redeem') query.set('nfc', 'reward')
+    return new NextResponse(null, {status: 302, headers: {...headers, Location: path + '?' + query}})
   } catch {
     return NextResponse.json({error: 'NFC bağlantısı açılamadı. Tekrar deneyin.'}, {status: 503, headers})
   }

@@ -1,6 +1,7 @@
 import { createCipheriv, createHmac, timingSafeEqual } from 'node:crypto'
 
-type Card = {tenant: string; key: Buffer}
+export type NfcPurpose = 'stamp' | 'redeem'
+type Card = {tenant: string; key: Buffer; purpose: NfcPurpose}
 
 function configuredCards(): Map<string, Card> {
   const cards = new Map<string, Card>()
@@ -9,8 +10,9 @@ function configuredCards(): Map<string, Card> {
   for (const [uid, value] of Object.entries(config)) {
     if (!/^[0-9a-f]{14}$/i.test(uid) || !value || typeof value.tenant !== 'string' ||
       typeof value.key !== 'string' || !/^[0-9a-f]{32}$/i.test(value.key) || /^0{32}$/.test(value.key) ||
+      (value.purpose !== undefined && value.purpose !== 'stamp' && value.purpose !== 'redeem') ||
       cards.has(uid.toLowerCase())) throw new Error('NFC kart ayarı geçersiz.')
-    cards.set(uid.toLowerCase(), {tenant: value.tenant, key: Buffer.from(value.key, 'hex')})
+    cards.set(uid.toLowerCase(), {tenant: value.tenant, key: Buffer.from(value.key, 'hex'), purpose: value.purpose ?? 'stamp'})
   }
   return cards
 }
@@ -54,5 +56,5 @@ export function verifyNfcTap(params: URLSearchParams) {
   if (!card || !timingSafeEqual(sdmMac(card.key, uid, counter), Buffer.from(mac, 'hex'))) return
   const tap = uid + ':' + counter
   const code = createHmac('sha256', card.key).update('damgabir-nfc:' + card.tenant + ':' + tap).digest('base64url').slice(0, 32)
-  return {tenant: card.tenant, code}
+  return {tenant: card.tenant, code, purpose: card.purpose}
 }

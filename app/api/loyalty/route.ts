@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { campaign, counterQrCode, database, digest, findActiveCode, issueCode, publishCampaign, today, token, useCode, wallet } from '../../../lib/database'
+import { campaign, counterQrCode, database, digest, findActiveCode, issueCode, ntagCards, publishCampaign, today, token, useCode, wallet } from '../../../lib/database'
 import { businessWalletPath } from '../../../lib/tenant'
 import { loyaltyContext } from '../../../lib/loyalty-context'
 import { qrPath } from '../../../lib/qr'
@@ -57,17 +57,18 @@ export async function POST(request: NextRequest) {
       await startCustomerSession(request,response,person,origin)
       return response
     }
-    if (body.action === 'claim' && host !== 'app') {
+    if ((body.action === 'claim' || body.action === 'claimNfcReward') && host !== 'app') {
       const person = await customerFor(request,current)
       if (!person) return reply({error:'Önce sadakat kartını aç.'},401)
       const code = str(body.code,64)
       const active = await findActiveCode(live,code)
       if (!active) return reply({error:'Kod kullanıldı veya süresi doldu.'},400)
-      const card = active.kind === 'redeem'
+      if ((body.action === 'claimNfcReward') !== (active.kind === 'nfc-reward')) return reply({error:'Kod bu işlem için geçerli değil.'},400)
+      const card = active.kind === 'redeem' || active.kind === 'nfc-reward'
         ? await membershipCard(person,tenant) ?? await legacyCard(live,person.phone)
         : await ensureCard(person,tenant,live)
-      if (!card) return reply({error:'Kod bu ödül bileti için geçerli değil.'},400)
-      return reply(await useCode(live,code,card))
+      const result = await useCode(live,code,card)
+      return reply(result.customer ? result : {...result,customer:{id:person.id,stamps:0}})
     }
     const keyHash = business?.keyHash ?? ownerKeyHash()
     const merchantCookie = business ? 'damgabir_merchant_' + business.slug : 'damgabir_merchant'
@@ -117,8 +118,8 @@ export async function POST(request: NextRequest) {
             .run(String(revision.name),rules.goal,rules.daily,rules.reward,new Date().toISOString(),'initial')
         })
       }
-      if (body.operation === 'stamp') {
-        const {code} = await issueCode(db,'Sunum','Kasa')
+      if (body.operation === 'stamp' || body.operation === 'redeem') {
+        const {code} = await issueCode(db,'Sunum','Kasa',undefined,body.operation === 'redeem' ? 'nfc-reward' : 'stamp')
         return reply(await useCode(db,code,id))
       }
       return reply(await wallet(db,id))
@@ -137,6 +138,15 @@ export async function POST(request: NextRequest) {
     }
 
     const base = host === 'demo' ? (process.env.DAMGABIR_PUBLIC_ORIGIN ?? origin) : `https://${tenant}.damgabir.com`
+    if (body.action === 'ntagCards') {
+      const nfcBase = host === 'app' ? (process.env.DAMGABIR_PUBLIC_ORIGIN ?? base) : base
+      const path = `/nfc/${tenant}/`
+      // Reserve 8 of the 144 bytes for the URI record and NFC Type 2 framing.
+      const fits = new TextEncoder().encode(new URL(path + 'A'.repeat(32) + '?ctr=000001',nfcBase).href).length <= 136
+      if (!fits) return reply({error:'NTAG213 kart için daha kısa bir alan adı kullanın.'},400)
+      const cards = await ntagCards(live)
+      return reply({stamp:new URL(path + cards.stamp,nfcBase).href,redeem:new URL(path + cards.redeem,nfcBase).href})
+    }
     if (body.action === 'counterQr' || body.action === 'issue') {
       const path = business ? businessWalletPath(business.slug) : '/'
       const claimUrl = (code: string) => new URL(path + '?code=' + code,base).href
@@ -145,7 +155,7 @@ export async function POST(request: NextRequest) {
         const url = claimUrl(await counterQrCode(live))
         return reply({url,qr:qrPath(url)})
       }
-      if (body.kind === 'redeem') return reply({error:'Ödül için müşterinin aynı kasa QR’ını okutması yeterli.'},400)
+      if (body.kind === 'redeem') return reply({error:'Ödül kullanımı için ödül NFC kartını okutun.'},400)
       const {code,expires} = await issueCode(live,str(body.branch,50) || 'Merkez',str(body.seal,50) || 'Kasa')
       const url = claimUrl(code)
       return reply({url,expires,qr:qrPath(url),code})

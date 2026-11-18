@@ -14,11 +14,11 @@ export async function generateMetadata({params}: {params: Promise<{slug: string}
 
 export default async function BusinessWallet({params, searchParams}: {
   params: Promise<{slug: string}>
-  searchParams: Promise<{code?: string}>
+  searchParams: Promise<{code?: string; nfc?: string}>
 }) {
   const {slug} = await params
   const business = await getBusiness(slug)
   if (!business) notFound()
-  const {code} = await searchParams
-  return <Wallet name={business.name} theme={business.theme} style={business.style} logoUrl={business.logoUrl} business={slug} code={typeof code === 'string' ? code : undefined} />
+  const {code, nfc} = await searchParams
+  return <Wallet key={typeof code === 'string' ? code : undefined} name={business.name} theme={business.theme} style={business.style} logoUrl={business.logoUrl} business={slug} code={typeof code === 'string' ? code : undefined} nfcReward={nfc === 'reward'} />
 }

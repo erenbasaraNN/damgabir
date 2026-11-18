@@ -12,8 +12,8 @@ import { loyalty, LoyaltyError, type Campaign } from '../../client'
 type State = {campaign:Campaign;customer:{id:string;stamps:number}|null;tickets:{id:string;reward:string;redeemed:string|null}[];action?:string}
 const initial: State = {campaign:{goal:8,daily:1,reward:'Bir kahve bizden',locked:0},customer:null,tickets:[]}
 
-export default function Wallet({name,code,preview,business,program,theme = defaultWalletTheme,style = defaultWalletStyle,logoUrl,onSessionExpired}: {
-  name:string;code?:string;preview?:boolean;business?:string;program?:'kavak';theme?:WalletTheme;style?:WalletStyle;logoUrl?:string|null;onSessionExpired?:()=>void
+export default function Wallet({name,code,nfcReward,preview,business,program,theme = defaultWalletTheme,style = defaultWalletStyle,logoUrl,onSessionExpired}: {
+  name:string;code?:string;nfcReward?:boolean;preview?:boolean;business?:string;program?:'kavak';theme?:WalletTheme;style?:WalletStyle;logoUrl?:string|null;onSessionExpired?:()=>void
 }) {
   const [state,setState] = useState<State>(initial)
   const [phone,setPhone] = useState('')
@@ -34,6 +34,7 @@ export default function Wallet({name,code,preview,business,program,theme = defau
   }, [earnedTicket])
   const started = useRef(false)
   const running = useRef(false)
+  const rewardAttempted = useRef(false)
 
 
   async function run(action:string, payload:Record<string,unknown> = {}) {
@@ -59,12 +60,15 @@ export default function Wallet({name,code,preview,business,program,theme = defau
         setNotice(earned ? 'Ödül biletin hazır!' : 'Damgan kartına işlendi.')
         if (newTicket) setEarnedTicket(newTicket)
       } else if (result.action === 'redeem') {
-        setNotice('Ödülün kullanıldı.')
+        setNotice(nfcReward ? 'NFC ile ödülünü kullandın.' : 'Ödülün kullanıldı.')
+        setTab('tickets')
+      } else if (result.action === 'reward-unavailable') {
+        setNotice('Kullanabileceğin ödül bileti yok.')
         setTab('tickets')
       }
       if (result.action && code) {
         setUsed(true)
-        window.history.replaceState(null,'',window.location.pathname)
+        window.history.replaceState(null,'',window.location.pathname + (program ? '?program=' + program : ''))
       }
       setState(result)
     } catch (e) {
@@ -85,12 +89,19 @@ export default function Wallet({name,code,preview,business,program,theme = defau
       if (preview && e instanceof LoyaltyError && e.status === 401) onSessionExpired?.()
       else setError((e as Error).message)
     }).finally(() => setReady(true))
-    // Loading a wallet never consumes its QR code. Claims require an explicit tap.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[])
 
+  useEffect(() => {
+    if (!ready || !state.customer || !code || !nfcReward || rewardAttempted.current) return
+    rewardAttempted.current = true
+    void run('claimNfcReward',{code})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[ready,state.customer,code,nfcReward])
+
   const stamps = state.customer?.stamps ?? 0
-  const canStamp = Boolean(preview || (code && !used))
+  const canStamp = Boolean(preview || (code && !nfcReward && !used))
+  const redeemingNfc = Boolean(code && nfcReward && !used)
   const available = state.tickets.filter(ticket => !ticket.redeemed).length
   const nextReward = state.tickets.findLast(ticket => !ticket.redeemed)
 
@@ -113,7 +124,7 @@ export default function Wallet({name,code,preview,business,program,theme = defau
         <p className="reward-celebration-label">Altın bilet</p>
         <h2 id="earned-heading">Tebrikler!</h2>
         <strong>{earnedTicket.reward}</strong>
-        <p>Ödülünü bir sonraki kasa okutmanda kullanabilirsin.</p>
+        <p>Ödüllerini biriktirebilir veya kasadaki ödül NFC kartıyla kullanabilirsin.</p>
       </div>
       <button className="primary" autoFocus onClick={() => {
         setTab('tickets')
@@ -124,31 +135,32 @@ export default function Wallet({name,code,preview,business,program,theme = defau
     <header className="wallet-header"><a className="brand" href={business ? businessWalletPath(business) : "/"}><Brand/></a><span className="wallet-header-label">Sadakat cüzdanı</span></header>
     <main id="top" className="wallet-main">
       <WalletIdentity name={name} campaign={state.campaign.name ?? (business ? 'Sadakat programı' : 'Kahve Kulübü')} logoUrl={logoUrl} business={Boolean(business)}/>
+      {nfcReward && notice && <p className="notice" role="status">{notice}</p>}
       <nav hidden={!state.customer} className="wallet-tabs" aria-label="Cüzdan">
         <button type="button" disabled={pending} aria-pressed={tab === 'card'} onClick={() => setTab('card')}><WalletCards size={17}/> Sadakat kartı</button>
         <button type="button" disabled={pending} aria-pressed={tab === 'tickets'} onClick={() => setTab('tickets')}><Ticket size={17}/> Ödül biletleri {available > 0 && <span className="badge">{available}</span>}</button>
       </nav>
       {tab === 'card' ? <>
-        <WalletCard goal={state.campaign.goal} reward={state.campaign.reward} stamps={stamps} canStamp={canStamp && !nextReward} impact={impact} hidden={!state.customer} business={Boolean(business)}/>
+        <WalletCard goal={state.campaign.goal} reward={state.campaign.reward} stamps={stamps} canStamp={canStamp} impact={impact} hidden={!state.customer} business={Boolean(business)}/>
         {state.customer ? <div className="wallet-action">
-          {!canStamp && <p><ScanLine size={17}/> {nextReward ? 'Ödülünü kullanmak için kasadaki NFC kartını veya QR’ı okut.' : 'Kasadaki NFC kartını veya QR kodu okutarak damga ekle.'}</p>}
-          {canStamp && <>
-            {nextReward && <p>{nextReward.reward}</p>}
-            <button className="primary stamp-trigger" disabled={pending || !ready} onClick={() => preview ? run('stamp') : run('claim',{code})}>
-              {nextReward ? <Ticket size={21}/> : <Stamp size={21}/>}
-              {pending ? 'İşleniyor…' : nextReward ? 'Ödülümü kullan' : 'Damganı bas'}
-            </button>
-          </>}
+          {redeemingNfc && (error && !pending
+            ? <button className="primary" onClick={() => run('claimNfcReward',{code})}>Tekrar dene</button>
+            : <p role="status">Ödül biletin kontrol ediliyor…</p>)}
+          {!canStamp && !redeemingNfc && <p><ScanLine size={17}/> Kasadaki damga NFC kartını veya QR kodunu okutarak damga ekle.</p>}
+          {canStamp && <button className="primary stamp-trigger" disabled={pending || !ready} onClick={() => preview ? run('stamp') : run('claim',{code})}>
+            <Stamp size={21}/> {pending ? 'İşleniyor…' : 'Damganı bas'}
+          </button>}
+          {preview && nextReward && <button className="secondary" disabled={pending || !ready} onClick={() => run('redeem')}><Ticket size={17}/> Ödülümü kullan</button>}
           {preview && <button className="secondary" disabled={pending} onClick={() => run('reset')}>Önizleme kartını sıfırla</button>}
         </div> : <form className="join welcome-form" onSubmit={event => {event.preventDefault();void run('join',{phone})}}>
-          <h2>{code ? 'Damganı cüzdanına ekle' : 'Sadakat kartını aç'}</h2>
+          <h2>{code ? nfcReward ? 'Ödülünü kullanmak için kartını aç' : 'Damganı cüzdanına ekle' : 'Sadakat kartını aç'}</h2>
           <PhoneInput value={phone} onChange={setPhone}/>
           <button className="primary" disabled={pending || !ready}>{pending ? 'İşleniyor…' : 'Kartımı aç'}<ArrowRight size={17}/></button>
         </form>}
       </> : <div className="tickets">
-        {state.tickets.length ? state.tickets.map(ticket => <article className="reward" key={ticket.id}><div className="ticket-icon"><Ticket size={31}/></div><div><span className="eyebrow">{ticket.redeemed ? 'KULLANILDI' : 'ÖDÜL BİLETİ'}</span><h2>{ticket.reward}</h2>{!ticket.redeemed && <p>Bir sonraki kasa okutmanda kullanılabilir.</p>}</div></article>) : <article className="empty"><Ticket size={27}/><h2>Henüz ödül biletin yok</h2><p>Kartı doldurduğunda biletin burada görünecek.</p></article>}
+        {state.tickets.length ? state.tickets.map(ticket => <article className="reward" key={ticket.id}><div className="ticket-icon"><Ticket size={31}/></div><div><span className="eyebrow">{ticket.redeemed ? 'KULLANILDI' : 'ÖDÜL BİLETİ'}</span><h2>{ticket.reward}</h2>{!ticket.redeemed && <p>Kasadaki ödül NFC kartını okutarak kullanabilirsin.</p>}</div></article>) : <article className="empty"><Ticket size={27}/><h2>Henüz ödül biletin yok</h2><p>Kartı doldurduğunda biletin burada görünecek.</p></article>}
       </div>}
-      {notice && <p className="notice" role="status">{notice}</p>}
+      {!nfcReward && notice && <p className="notice" role="status">{notice}</p>}
       {error && <p className="error" role="alert">{error}</p>}
     </main>
   </div>
