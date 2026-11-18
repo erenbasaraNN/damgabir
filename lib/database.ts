@@ -185,6 +185,8 @@ const platformSchema = `
     CREATE TABLE IF NOT EXISTS @person_session (id TEXT PRIMARY KEY, person TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS @person_session_expiry ON @person_session(expires);
     CREATE TABLE IF NOT EXISTS @membership (person TEXT NOT NULL, tenant TEXT NOT NULL, card TEXT NOT NULL, PRIMARY KEY(person,tenant), UNIQUE(tenant,card));
+    CREATE TABLE IF NOT EXISTS @whatsapp_consent (id INTEGER PRIMARY KEY, person TEXT NOT NULL, tenant TEXT NOT NULL, phone TEXT NOT NULL, sender TEXT NOT NULL, full_name TEXT, accepted INTEGER NOT NULL CHECK(accepted IN (0,1)), version TEXT NOT NULL, recorded_at TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS @whatsapp_consent_person ON @whatsapp_consent(person,tenant,id);
     CREATE TABLE IF NOT EXISTS @legacy_import (person TEXT PRIMARY KEY);
 `
 export async function campaign(db: LoyaltyDatabase) {

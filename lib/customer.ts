@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { database, digest, token, type LoyaltyDatabase } from './database'
 import { businessWalletPath, tenantNames } from './tenant'
 import { listBusinesses } from './business'
+import { whatsappConsentVersion } from './contact-consent'
 
 type Person = {id: string; phone: string}
 export const customerCookie = 'damga_customer'
@@ -80,6 +81,36 @@ export async function ensureCard(person: Person, tenant: string, db: LoyaltyData
   return card
 }
 
+export async function whatsappPreference(person: Person, tenant: string) {
+  const db = await platform()
+  const row = await db.prepare('SELECT accepted FROM @whatsapp_consent WHERE person=? AND tenant=? ORDER BY id DESC LIMIT 1').get(person.id,tenant)
+  return row ? Number(row.accepted) === 1 : null
+}
+
+export async function recordWhatsAppConsent(person: Person, tenant: string, sender: string, accepted: boolean, fullName: string, initial: boolean) {
+  const db = await platform()
+  const fields = [person.id,tenant,person.phone,sender,accepted ? fullName : null,Number(accepted),whatsappConsentVersion,new Date().toISOString()] as const
+  const insert = 'INSERT INTO @whatsapp_consent (person,tenant,phone,sender,full_name,accepted,version,recorded_at) SELECT ?,?,?,?,?,?,?,?'
+  if (initial) {
+    await db.prepare(insert + ' WHERE NOT EXISTS (SELECT 1 FROM @whatsapp_consent WHERE person=? AND tenant=?)').run(...fields,person.id,tenant)
+  } else {
+    await db.prepare(insert + ' WHERE (SELECT accepted FROM @whatsapp_consent WHERE person=? AND tenant=? ORDER BY id DESC LIMIT 1) IS NOT ?')
+      .run(...fields,person.id,tenant,Number(accepted))
+  }
+}
+
+async function merchantMemberships(tenant: string) {
+  const db = await platform()
+  return db.prepare(`SELECT m.card,p.phone, c.accepted FROM @membership m
+    JOIN @person p ON p.id=m.person
+    LEFT JOIN @whatsapp_consent c ON c.id=(SELECT id FROM @whatsapp_consent WHERE person=m.person AND tenant=m.tenant ORDER BY id DESC LIMIT 1)
+    WHERE m.tenant=?`).all(tenant)
+}
+
+export async function whatsappRecipients(tenant: string) {
+  return (await merchantMemberships(tenant)).filter(row => Number(row.accepted) === 1).map(row => String(row.phone))
+}
+
 export async function restoreLegacyPerson(db: LoyaltyDatabase, tenant: string, session: string) {
   const row = await db.prepare('SELECT c.id,c.phone FROM @sessions s JOIN @customer c ON c.id=s.customer WHERE s.id=? AND s.expires>?')
     .get(digest(session), Date.now())
@@ -93,20 +124,20 @@ export async function restoreLegacyPerson(db: LoyaltyDatabase, tenant: string, s
 }
 
 export async function merchantCustomers(db: LoyaltyDatabase, tenant: string) {
-  const identity = await platform()
   const [cards, identities] = await Promise.all([
     db.prepare('SELECT id,phone,stamps,last_visit FROM @customer').all(),
-    identity.prepare('SELECT m.card,p.phone FROM @membership m JOIN @person p ON p.id=m.person WHERE m.tenant=?').all(tenant),
+    merchantMemberships(tenant),
   ])
   const phones = new Map(identities.map(row => [row.card, String(row.phone)]))
-  const customers = new Map<string,{phone:string;stamps:number;last_visit:string|null}>()
+  const allowed = new Set(identities.filter(row => Number(row.accepted) === 1).map(row => String(row.phone)))
+  const customers = new Map<string,{phone:string;stamps:number;last_visit:string|null;whatsappAllowed:boolean}>()
   for (const card of cards) {
     const phone = phones.get(card.id) ?? String(card.phone)
     if (!phone) continue
     const visit = typeof card.last_visit === 'string' ? card.last_visit : null
     const previous = customers.get(phone)
     customers.set(phone, {
-      phone, stamps:Math.max(Number(card.stamps), previous?.stamps ?? 0),
+      phone, whatsappAllowed:allowed.has(phone), stamps:Math.max(Number(card.stamps), previous?.stamps ?? 0),
       last_visit:(visit ?? '') > (previous?.last_visit ?? '') ? visit : previous?.last_visit ?? null,
     })
   }

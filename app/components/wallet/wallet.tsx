@@ -7,9 +7,10 @@ import { businessWalletPath } from '../../../lib/tenant'
 import { WalletCard, WalletIdentity } from './wallet-card'
 import { defaultWalletStyle, defaultWalletTheme, type WalletStyle, type WalletTheme } from '../../../lib/business-appearance'
 import PhoneInput from '../portal/phone-input'
+import { contactConsentValues, PrivacyNotice, WhatsAppConsentFields } from '../portal/contact-consent'
 import { loyalty, LoyaltyError, type Campaign } from '../../client'
 
-type State = {campaign:Campaign;customer:{id:string;stamps:number}|null;tickets:{id:string;reward:string;redeemed:string|null}[];action?:string}
+type State = {campaign:Campaign;customer:{id:string;stamps:number}|null;tickets:{id:string;reward:string;redeemed:string|null}[];action?:string;whatsappConsent?:boolean|null}
 const initial: State = {campaign:{goal:8,daily:1,reward:'Bir kahve bizden',locked:0},customer:null,tickets:[]}
 
 export default function Wallet({name,code,nfcReward,preview,business,program,theme = defaultWalletTheme,style = defaultWalletStyle,logoUrl,onSessionExpired}: {
@@ -66,11 +67,12 @@ export default function Wallet({name,code,nfcReward,preview,business,program,the
         setNotice('Kullanabileceğin ödül bileti yok.')
         setTab('tickets')
       }
+      if (action === 'whatsappConsent') setNotice(result.whatsappConsent ? 'WhatsApp iletişim iznin kaydedildi.' : 'WhatsApp iletişim iznin kapalı.')
       if (result.action && code) {
         setUsed(true)
         window.history.replaceState(null,'',window.location.pathname + (program ? '?program=' + program : ''))
       }
-      setState(result)
+      setState(previous => ({...result,whatsappConsent:result.whatsappConsent === undefined ? previous.whatsappConsent : result.whatsappConsent}))
     } catch (e) {
       if (preview && e instanceof LoyaltyError && e.status === 401) onSessionExpired?.()
       else setError((e as Error).message)
@@ -152,14 +154,27 @@ export default function Wallet({name,code,nfcReward,preview,business,program,the
           </button>}
           {preview && nextReward && <button className="secondary" disabled={pending || !ready} onClick={() => run('redeem')}><Ticket size={17}/> Ödülümü kullan</button>}
           {preview && <button className="secondary" disabled={pending} onClick={() => run('reset')}>Önizleme kartını sıfırla</button>}
-        </div> : <form className="join welcome-form" onSubmit={event => {event.preventDefault();void run('join',{phone})}}>
+        </div> : <form className="join welcome-form" onSubmit={event => {event.preventDefault();void run('join',{phone,...contactConsentValues(event.currentTarget)})}}>
           <h2>{code ? nfcReward ? 'Ödülünü kullanmak için kartını aç' : 'Damganı cüzdanına ekle' : 'Sadakat kartını aç'}</h2>
           <PhoneInput value={phone} onChange={setPhone}/>
+          <PrivacyNotice sender={name}/>
+          <WhatsAppConsentFields sender={name}/>
           <button className="primary" disabled={pending || !ready}>{pending ? 'İşleniyor…' : 'Kartımı aç'}<ArrowRight size={17}/></button>
         </form>}
       </> : <div className="tickets">
         {state.tickets.length ? state.tickets.map(ticket => <article className="reward" key={ticket.id}><div className="ticket-icon"><Ticket size={31}/></div><div><span className="eyebrow">{ticket.redeemed ? 'KULLANILDI' : 'ÖDÜL BİLETİ'}</span><h2>{ticket.reward}</h2>{!ticket.redeemed && <p>Kasadaki ödül NFC kartını okutarak kullanabilirsin.</p>}</div></article>) : <article className="empty"><Ticket size={27}/><h2>Henüz ödül biletin yok</h2><p>Kartı doldurduğunda biletin burada görünecek.</p></article>}
       </div>}
+      {state.customer && !preview && <details className="wallet-contact-preferences">
+        <summary>İletişim tercihleri</summary>
+        <PrivacyNotice sender={name}/>
+        {state.whatsappConsent ? <>
+          <p>Bu işletme için WhatsApp iletişim iznin açık.</p>
+          <button type="button" className="secondary" disabled={pending} onClick={() => void run('whatsappConsent',{whatsappConsent:false})}>İzni geri al</button>
+        </> : <form onSubmit={event => {event.preventDefault();void run('whatsappConsent',contactConsentValues(event.currentTarget))}}>
+          <WhatsAppConsentFields sender={name}/>
+          <button className="secondary" disabled={pending}>Tercihi kaydet</button>
+        </form>}
+      </details>}
       {!nfcReward && notice && <p className="notice" role="status">{notice}</p>}
       {error && <p className="error" role="alert">{error}</p>}
     </main>

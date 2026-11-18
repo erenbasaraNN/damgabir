@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { campaign, counterQrCode, database, digest, findActiveCode, issueCode, ntagCards, publishCampaign, today, token, useCode, wallet } from '../../../lib/database'
-import { businessWalletPath } from '../../../lib/tenant'
+import { businessWalletPath, tenantNames } from '../../../lib/tenant'
 import { loyaltyContext } from '../../../lib/loyalty-context'
 import { qrPath } from '../../../lib/qr'
 import { keyMatches, ownerKeyHash, updateBusinessAppearance } from '../../../lib/business'
 import { isWalletStyle, isWalletTheme } from '../../../lib/business-appearance'
-import { ensureCard, findOrCreatePerson, legacyCard, membershipCard, merchantCustomers, readPerson, recentMerchantActivity, restoreLegacyPerson, startCustomerSession } from '../../../lib/customer'
+import { ensureCard, findOrCreatePerson, legacyCard, membershipCard, merchantCustomers, readPerson, recentMerchantActivity, recordWhatsAppConsent, restoreLegacyPerson, startCustomerSession, whatsappPreference, whatsappRecipients } from '../../../lib/customer'
 import { phoneDigits, phoneFormatError, validPhone } from '../../../lib/phone'
 
 export const runtime = 'nodejs'
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const person = await customerFor(request, current)
     const card = person ? await membershipCard(person, tenant) ?? await legacyCard(db, person.phone) : undefined
     const state = await wallet(db,card)
-    if (person && !state.customer) return reply({...state,customer:{id:person.id,stamps:0}})
+    if (person) return reply({...state,customer:state.customer ?? {id:person.id,stamps:0},whatsappConsent:await whatsappPreference(person,tenant)})
     return reply(state)
   } catch { return reply({error:'Cüzdan açılamadı. Tekrar deneyin.'},503) }
 }
@@ -48,14 +48,28 @@ export async function POST(request: NextRequest) {
     if (!current) return reply({error:'İşletme bulunamadı.'},404)
     const {host,tenant,db: live,business} = current
     const body = await request.json()
+    const sender = business?.name ?? tenantNames[tenant]
+    const contactName = str(body.contactName,120).replace(/\s+/g,' ')
+    const hasFullName = contactName.includes(' ')
     if (body.action === 'join' && host !== 'app') {
       const phone = phoneDigits(body.phone)
       if (!validPhone(phone)) return reply({error:phoneFormatError},400)
+      if (body.whatsappConsent === true && !hasFullName) return reply({error:'WhatsApp iletişim izni için adını ve soyadını gir.'},400)
       const person = await findOrCreatePerson(phone)
       const card = await ensureCard(person,tenant,live)
-      const response = reply(await wallet(live,card))
+      if (typeof body.whatsappConsent === 'boolean') await recordWhatsAppConsent(person,tenant,sender,body.whatsappConsent,contactName,true)
+      const response = reply({...await wallet(live,card),whatsappConsent:await whatsappPreference(person,tenant)})
       await startCustomerSession(request,response,person,origin)
       return response
+    }
+    if (body.action === 'whatsappConsent' && host !== 'app') {
+      const person = await customerFor(request,current)
+      if (!person) return reply({error:'Önce sadakat kartını aç.'},401)
+      if (typeof body.whatsappConsent !== 'boolean') return reply({error:'WhatsApp iletişim tercihini seç.'},400)
+      if (body.whatsappConsent && !hasFullName) return reply({error:'WhatsApp iletişim izni için adını ve soyadını gir.'},400)
+      await recordWhatsAppConsent(person,tenant,sender,body.whatsappConsent,contactName,false)
+      const state = await wallet(live,await membershipCard(person,tenant) ?? await legacyCard(live,person.phone))
+      return reply({...state,customer:state.customer ?? {id:person.id,stamps:0},whatsappConsent:await whatsappPreference(person,tenant)})
     }
     if ((body.action === 'claim' || body.action === 'claimNfcReward') && host !== 'app') {
       const person = await customerFor(request,current)
@@ -89,6 +103,8 @@ export async function POST(request: NextRequest) {
       const active = sessionId && await live.prepare('SELECT 1 FROM @merchant_sessions WHERE id=? AND expires>?').get(sessionId,Date.now())
       if (!active) return reply({error:'İşletme paneline giriş yapın.'},401)
     }
+
+    if (body.action === 'messageRecipients') return reply({phones:await whatsappRecipients(tenant)})
 
     if (body.action === 'appearance' && business) {
       const name = typeof body.name === 'string' ? body.name.trim() : ''

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowRight, Stamp, Ticket } from 'lucide-react'
 import { formatPhone } from '../../../lib/phone'
 import PhoneInput from './phone-input'
+import { PrivacyNotice } from './contact-consent'
 
 type Card = {name:string;href:string;stamps:number;goal:number;rewards:number}
 type Account = {phone:string;cards:Card[]}
@@ -66,6 +67,7 @@ export default function CustomerPortal() {
       <button className="secondary" disabled={pending} onClick={() => void submit('logout')}>Oturumu kapat</button>
     </> : <form className="panel admin-form" onSubmit={event => {event.preventDefault();void submit('login')}}>
       <PhoneInput value={phone} onChange={setPhone}/>
+      <PrivacyNotice/>
       <button className="primary" disabled={pending}>Kartlarımı aç <ArrowRight size={17}/></button>
     </form>}
     {error && <p className="error" role="alert">{error}</p>}

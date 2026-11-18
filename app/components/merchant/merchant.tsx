@@ -8,7 +8,7 @@ import Wallet from '../wallet/wallet'
 import BusinessSettings from './business-settings'
 import type { BusinessAppearance } from '../../../lib/business-appearance'
 
-type Customer = {phone:string;stamps:number;last_visit:string|null}
+type Customer = {phone:string;stamps:number;last_visit:string|null;whatsappAllowed:boolean}
 type Revision = Campaign & {id:number;name:string;changed:string;kind:string}
 type Activity = {id:number;day:string;kind:string;branch:string;seal:string;phone:string|null}
 type ActivityFeed = {activity:Activity[];totals:{stamps:number;tickets:number}}
@@ -42,13 +42,9 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
   const [clock,setClock] = useState(0)
   const [message,setMessage] = useState('')
   const [recipientIndex,setRecipientIndex] = useState(0)
-  const [batch,setBatch] = useState<{phones:string[];text:string;downloadUrl:string}>()
+  const [batch,setBatch] = useState<{phones:string[];text:string}>()
   const qrUrl = useRef<HTMLInputElement>(null)
   const counterUrl = useRef<HTMLInputElement>(null)
-  const downloadUrl = batch?.downloadUrl
-  useEffect(() => {
-    if (downloadUrl) return () => URL.revokeObjectURL(downloadUrl)
-  }, [downloadUrl])
 
   const showOverview = useCallback((result: Overview) => {
     setData(result)
@@ -152,6 +148,22 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
     return () => {active = false;clearTimeout(timer)}
   },[activityVisible,business,sessionExpired])
 
+  const contactVisible = Boolean(data) && (view === 'customers' || view === 'messages')
+  useEffect(() => {
+    if (!contactVisible) return
+    let active = true
+    void loyalty<{phones:string[]}>({action:'messageRecipients'},business).then(({phones}) => {
+      if (!active) return
+      const allowed = new Set(phones)
+      setData(previous => previous && {...previous,customers:previous.customers.map(customer => ({...customer,whatsappAllowed:allowed.has(customer.phone)}))})
+    }).catch(error => {
+      if (!active) return
+      if (error instanceof LoyaltyError && error.status === 401) sessionExpired()
+      else setError((error as Error).message)
+    })
+    return () => {active = false}
+  },[business,contactVisible,view,sessionExpired])
+
   async function run(action:string, payload:Record<string,unknown> = {}) {
     setError('');setNotice('');setPending(true)
     try {
@@ -189,15 +201,54 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
   function switchTo(next:View) {setView(next);setError('');setNotice('')}
   const cutoff = data ? new Date(Date.parse(data.day) - 30*86400000).toISOString().slice(0,10) : ''
   const customers = data?.customers.filter(customer => segment === 'all' || (segment === 'near' ? customer.stamps === data.campaign.goal - 1 : customer.last_visit && customer.last_visit <= cutoff)) ?? []
+  const messageCustomers = customers.filter(customer => customer.whatsappAllowed)
   const seconds = issued ? Math.max(0,Math.ceil((issued.expires-clock)/1000)) : 0
   const filter = <select aria-label="Müşteri segmenti" value={segment} onChange={event => {setSegment(event.target.value);setBatch(undefined)}}><option value="all">Tüm müşteriler</option><option value="near">Ödüle 1 damga kalanlar</option><option value="inactive">30 gündür gelmeyenler</option></select>
 
+  async function withAllowedRecipients(phones:string[], work:(allowed:string[]) => void) {
+    setPending(true);setError('');setNotice('')
+    try {
+      const result = await loyalty<{phones:string[]}>({action:'messageRecipients'},business)
+      const allowed = new Set(result.phones)
+      const eligible = phones.filter(phone => allowed.has(phone))
+      if (!eligible.length) throw new Error('Bu işlem için güncel WhatsApp izni olan müşteri yok.')
+      work(eligible)
+    } catch (error) {
+      if (error instanceof LoyaltyError && error.status === 401) sessionExpired()
+      else setError((error as Error).message)
+    } finally {setPending(false)}
+  }
+
+  async function openWhatsApp(phone:string,text:string) {
+    const popup = window.open('about:blank','_blank')
+    if (popup) popup.opener = null
+    let opened = false
+    await withAllowedRecipients([phone],([allowed]) => {
+      const url = whatsapp(allowed,text)
+      if (popup) popup.location.replace(url)
+      else window.location.assign(url)
+      opened = true
+    })
+    if (!opened) popup?.close()
+  }
+
   function prepareMessages() {
-    const phones = customers.map(customer => customer.phone)
-    const text = message.trim()
-    const file = new Blob([recipientCsv(phones, text)], {type:'text/csv;charset=utf-8'})
-    setBatch({phones,text,downloadUrl:URL.createObjectURL(file)})
-    setRecipientIndex(0)
+    setBatch(undefined)
+    void withAllowedRecipients(customers.map(customer => customer.phone),phones => {
+      setBatch({phones,text:message.trim()})
+      setRecipientIndex(0)
+    })
+  }
+
+  function downloadMessages(list: NonNullable<typeof batch>) {
+    void withAllowedRecipients(list.phones,phones => {
+      const download = document.createElement('a')
+      const file = new Blob([recipientCsv(phones,list.text)],{type:'text/csv;charset=utf-8'})
+      download.href = URL.createObjectURL(file)
+      download.download = 'damgabir-whatsapp.csv'
+      download.click()
+      setTimeout(() => URL.revokeObjectURL(download.href),1000)
+    })
   }
 
   async function copyLink(url: string, input: HTMLInputElement | null) {
@@ -256,13 +307,13 @@ export default function Merchant({walletUrl,business,initialAppearance}: {wallet
         </section>
       </div>}
       {view === 'customers' && <section className="panel activity"><div className="form-heading"><h2>Müşteri listesi</h2>{filter}</div>
-        {customers.length ? <div className="table-wrap"><table><thead><tr><th>Telefon</th><th>Damga</th><th>Son geliş</th><th>İletişim</th></tr></thead><tbody>{customers.map(customer => <tr key={customer.phone}><td>+90 {customer.phone}</td><td>{customer.stamps}/{data.campaign.goal}</td><td>{customer.last_visit ?? '—'}</td><td><a className="whatsapp" target="_blank" rel="noreferrer" href={whatsapp(customer.phone,'Merhaba! ' + businessName + ' sizi bekliyor.')}><MessageCircle size={16}/> Mesaj gönder</a></td></tr>)}</tbody></table></div> : <p>Bu segmentte müşteri yok.</p>}
+        {customers.length ? <div className="table-wrap"><table><thead><tr><th>Telefon</th><th>Damga</th><th>Son geliş</th><th>İletişim</th></tr></thead><tbody>{customers.map(customer => <tr key={customer.phone}><td>+90 {customer.phone}</td><td>{customer.stamps}/{data.campaign.goal}</td><td>{customer.last_visit ?? '—'}</td><td>{customer.whatsappAllowed ? <button type="button" className="whatsapp" disabled={pending} onClick={() => void openWhatsApp(customer.phone,'Merhaba! ' + businessName + ' sizi bekliyor.')}><MessageCircle size={16}/> Mesaj gönder</button> : 'WhatsApp izni yok'}</td></tr>)}</tbody></table></div> : <p>Bu segmentte müşteri yok.</p>}
       </section>}
       {view === 'messages' && <div className="admin-grid"><form className="panel admin-form" onSubmit={event => {event.preventDefault();prepareMessages()}}>
-        <h2>Toplu mesaj hazırla</h2><label>Alıcılar{filter}</label><p>{customers.length} alıcı</p><label>Mesaj<textarea required maxLength={1000} value={message} onChange={event => setMessage(event.target.value)} rows={5} placeholder={'Merhaba! ' + businessName + ' sizi bekliyor.'}/></label>
-        <button className="primary" disabled={!customers.length || !message.trim()}><MessageCircle size={17}/> Mesaj gönder</button>
+        <h2>Toplu mesaj hazırla</h2><label>Alıcılar{filter}</label><p>{messageCustomers.length} WhatsApp izinli alıcı</p><label>Mesaj<textarea required maxLength={1000} value={message} onChange={event => setMessage(event.target.value)} rows={5} placeholder={'Merhaba! ' + businessName + ' sizi bekliyor.'}/></label>
+        <button className="primary" disabled={pending || !messageCustomers.length || !message.trim()}><MessageCircle size={17}/> Listeyi hazırla</button>
       </form><section className="panel activity"><h2>Gönderim listesi</h2><p>WhatsApp bağlantısı her alıcının sohbetini hazır mesajla açar. Otomatik toplu gönderim için WhatsApp Business API bağlantısı gerekir.</p>
-        {batch && <div className="batch"><p>{batch.phones.length} alıcı hazır.</p><blockquote>{batch.text}</blockquote><label>Alıcı seç <select value={recipientIndex} onChange={e => setRecipientIndex(Number(e.target.value))}>{batch.phones.map((phone,index) => <option key={phone} value={index}>+90 {phone}</option>)}</select></label><a className="primary" href={whatsapp(batch.phones[recipientIndex],batch.text)} target="_blank" rel="noreferrer">WhatsApp’ta aç <ArrowRight size={16}/></a><a className="secondary" href={batch.downloadUrl} download="damgabir-whatsapp.csv"><ArrowDownToLine size={16}/> Alıcı listesini indir</a></div>}
+        {batch && <div className="batch"><p>{batch.phones.length} alıcı hazır.</p><blockquote>{batch.text}</blockquote><label>Alıcı seç <select value={recipientIndex} onChange={e => setRecipientIndex(Number(e.target.value))}>{batch.phones.map((phone,index) => <option key={phone} value={index}>+90 {phone}</option>)}</select></label><button type="button" className="primary" disabled={pending} onClick={() => void openWhatsApp(batch.phones[recipientIndex],batch.text)}>WhatsApp’ta aç <ArrowRight size={16}/></button><button type="button" className="secondary" disabled={pending} onClick={() => downloadMessages(batch)}><ArrowDownToLine size={16}/> Alıcı listesini indir</button></div>}
       </section></div>}
       {view === 'codes' && <>
         <section className="panel admin-form">

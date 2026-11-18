@@ -136,6 +136,61 @@
   gap: .6rem;
 }
 
+.privacy-notice, .whatsapp-consent, .wallet-contact-preferences {
+  font-size: .875rem;
+  line-height: 1.5;
+}
+
+.privacy-notice summary, .wallet-contact-preferences > summary {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
+
+.privacy-notice p, .wallet-contact-preferences p {
+  margin: .5rem 0;
+}
+
+.whatsapp-consent label.whatsapp-consent-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  margin: 0;
+  font-size: inherit;
+}
+
+.whatsapp-consent-choice input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: .15rem 0 0;
+  accent-color: #28634b;
+}
+
+.whatsapp-consent-name {
+  display: grid;
+  gap: .3rem;
+  margin-top: .65rem;
+}
+
+.whatsapp-consent-name input {
+  width: 100%;
+  padding: .65rem .75rem;
+  border: 1px solid #78877a;
+  border-radius: .6rem;
+  background: transparent;
+  color: inherit;
+}
+
+.wallet-contact-preferences {
+  margin: 1rem auto 0;
+  max-width: 32rem;
+}
+
+.wallet-contact-preferences .privacy-notice, .wallet-contact-preferences form, .wallet-contact-preferences button {
+  margin-top: .65rem;
+}
+
 @media (max-width: 700px) {
   .portal-roles {
     grid-template-columns: 1fr;
